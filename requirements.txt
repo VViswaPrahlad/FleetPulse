@@ -1,0 +1,11 @@
+# Day 2 pins for Python 3.12 and Java 21.
+# Pip installs required transitive dependencies (including Py4J and NumPy).
+# 4.0.3 includes SPARK-53759: Windows Python 3.12 worker flush fix.
+pyspark==4.0.3
+pyarrow==20.0.0
+pandas==2.2.3
+pytest==8.3.5
+# Required for integrity checking/extracting the author's 7z archives.
+py7zr==1.0.0
+# Day 4 local SQL engine, Python 3.12/Windows wheel; no server/extensions.
+duckdb==1.4.4

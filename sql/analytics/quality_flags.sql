@@ -1,0 +1,2 @@
+SELECT quality_flag,observation_count,observation_fraction
+FROM quality_metrics ORDER BY observation_count DESC,quality_flag;
