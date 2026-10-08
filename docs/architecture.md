@@ -132,3 +132,41 @@ window creation. Gold whole-trip/lifetime summaries are not causal features.
 No ML training/windows or dashboard is created on Day 4. See the updated
 [ML definition](ml_problem_definition.md) for fuel rejection evidence and
 [Day 4 report](day4_report.md) for measured reconciliation/runtime/storage.
+
+## Day 5 leakage-safe ML dataset and baselines
+
+```text
+Gold vehicle IDs (source roster only) -> frozen hash-ranked vehicle split
+Immutable Silver weekly Parquet -> complete vehicle/trip chronological groups
+    -> exact observed t-60, t, t+60 boundaries and <=2s gaps
+    -> Day 3 count reconciliation (34,348 candidates / 318 vehicles)
+    -> strict greedy disjoint 120s contexts (11,549 examples)
+    -> past-only feature function + separate future-speed target integration
+    -> PyArrow train / validation / test tables in data/ml/speed/
+    -> fixed last-speed / past-mean / train-only historical-mean baselines
+    -> source-provenance audit, immutable hashes and reproducibility manifest
+```
+
+Assign all 384 source vehicles before inspecting their windows/labels, using
+SHA-256 of a fixed seed plus ID, then 70/15/remainder percent by ranked vehicle
+count. Usable vehicles are 223/45/50; all windows of each vehicle stay together.
+Within a trip, the next retained feature start is strictly later than the
+previous target end. This removes shared endpoints as well as target/context
+interval overlap; it does not establish statistical independence between a
+vehicle's different trips. Macro metrics expose unequal per-vehicle volumes.
+
+31 numeric predictors come exclusively from [t-60s,t]. The target uses the
+observed anchor speed at t and future measured speeds through t+60s. The
+anchor boundary is shared only within an example as explicitly approved;
+future rows/coverage cannot become features. No full-trip/lifetime Gold
+statistic, ID or absolute timestamp is a predictor. Sensor NULL semantics and
+Bronze row pointers are preserved. New ML files/JSON/Parquet results remain
+Git-ignored; no raw traces, trained estimator or model binary is published.
+
+NumPy/Pandas perform bounded local window calculations; PyArrow performs
+Windows-compatible writes. No new framework/package installation is needed.
+Whole trips must fit in one source file; cross-file trips fail explicitly.
+The final dataset manifest is written after validated staged files replace
+fixed outputs; consumers must not query during multi-file publication.
+The historical baseline fits just one mean from training labels. No estimator
+training, dashboard or Day 6 work is performed. See [Day 5 report](day5_report.md).

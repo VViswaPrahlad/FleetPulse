@@ -4,6 +4,15 @@ Approved on 2026-10-08: **next-60-second mean speed forecasting** using VED.
 This replaces the rejected ICE/HEV fuel-consumption task. No model, training
 windows or feature matrix is produced on Day 4.
 
+Day 5 (2026-10-09) implements the approved windows and three fixed baselines.
+Silver reproduces 34,348 candidates / 318 vehicles / 6,864 trips exactly.
+Primary baseline evaluation uses 11,549 strict disjoint contexts, with next
+feature start > prior target end, so not even an endpoint observation is reused.
+The Day 3 11,671-context count allowed touching endpoints; its 122-example
+difference is policy-driven. All 318 usable vehicles remain. A deterministic
+SHA-256 split of all 384 source vehicles is frozen before window generation.
+See [Day 5 report](day5_report.md) for definitions, held-out counts and metrics.
+
 ## Target and measurement contract
 
 At an observed prediction time t, predict the time-weighted mean measured
