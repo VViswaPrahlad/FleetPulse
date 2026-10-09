@@ -760,6 +760,41 @@ h3 {
   border: 0;
   margin: 0;
 }
+.prediction-quick-demo .panel > p {
+  line-height: 1.8;
+}
+.prediction-quick-demo .actions {
+  margin: 20px 0 14px;
+}
+.prediction-advanced {
+  border: 1px solid #334359;
+  border-radius: 11px;
+  background: #111c2a;
+  min-width: 0;
+}
+.prediction-advanced > summary {
+  padding: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.7;
+  color: #d7e6f4;
+}
+.prediction-advanced > summary:focus-visible {
+  outline: 2px solid #80efd0;
+  outline-offset: -4px;
+}
+.prediction-advanced > .panel {
+  border: 0;
+  border-top: 1px solid #334359;
+  border-radius: 0 0 11px 11px;
+}
+@media (max-width: 600px) {
+  .prediction-quick-demo .actions > .button {
+    width: 100%;
+    justify-content: center;
+  }
+}
 .feature-group {
   margin-top: 26px;
 }

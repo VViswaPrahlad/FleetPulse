@@ -57,21 +57,19 @@ describe("API and numeric semantics", () => {
   it("preserves safe backend validation details", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          json(
-            {
-              error: {
-                message: "Invalid prepared features.",
-                details: [
-                  { field: "features", message: "Inconsistent extrema." },
-                ],
-              },
+      vi.fn().mockResolvedValue(
+        json(
+          {
+            error: {
+              message: "Invalid prepared features.",
+              details: [
+                { field: "features", message: "Inconsistent extrema." },
+              ],
             },
-            422,
-          ),
+          },
+          422,
         ),
+      ),
     );
     await expect(request("/ml/predict")).rejects.toMatchObject({
       message: "Invalid prepared features.",
@@ -260,6 +258,9 @@ describe("exact prepared inference contract", () => {
     render(<PredictionLab />);
     await screen.findByLabelText(/speed last kmh/);
     await userEvent.click(
+      screen.getByText("Advanced: Prepared feature vector"),
+    );
+    await userEvent.click(
       screen.getByRole("button", { name: "Predict mean speed" }),
     );
     expect(await screen.findByRole("alert")).toHaveTextContent("Enter");
@@ -285,6 +286,9 @@ describe("exact prepared inference contract", () => {
     vi.stubGlobal("fetch", fetcher);
     render(<PredictionLab />);
     await screen.findByLabelText(/speed last kmh/);
+    await userEvent.click(
+      screen.getByText("Advanced: Prepared feature vector"),
+    );
     await userEvent.click(
       screen.getByRole("button", { name: "Load verified example" }),
     );

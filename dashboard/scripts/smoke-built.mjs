@@ -154,14 +154,10 @@ if (process.argv.includes("--unavailable")) {
     () => root.querySelectorAll("form input").length === 31,
     "31 prepared fields",
   );
-  click("Load verified example");
+  click("Run example prediction");
   await wait(
     () => root.querySelector("#past_speed_last_kmh").value !== "",
     "example populated",
-  );
-  const form = root.querySelector("form");
-  form.dispatchEvent(
-    new dom.window.Event("submit", { bubbles: true, cancelable: true }),
   );
   await wait(
     () =>

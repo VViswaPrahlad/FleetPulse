@@ -10,7 +10,7 @@ Start both servers and confirm `/api/v1/ready` returns 200 before presenting. Co
 | 0:35–1:15 | Data Quality | Bronze = Silver + quarantine; show missingness and gap flags; explain original values, SOC precision corrections and no imputation. |
 | 1:15–1:55 | Driving Analytics | Change powertrain/vehicle filters, switch trips/vehicles and paginate; explain bounded SQL, partial distance and trip-start date cohorts. |
 | 1:55–2:45 | ML Intelligence | Test MAE 10.887 versus last-speed 14.056; explain past-only inputs, disjoint contexts, held-out vehicles and validation-only selection. State 16 vehicles worsen and no test EVs. |
-| 2:45–3:30 | Prediction Lab | Exact 31 prepared features, not raw GPS. Load measured example → predict about 36.62 km/h → reset. Explain optional sensor availability. |
+| 2:45–3:30 | Prediction Lab | Click **Run example prediction** in Quick Demo → real API forecast about 36.62 km/h → reset. Expand **Advanced: Prepared feature vector** to inspect/edit the exact 31 features. Explain optional sensor availability and why raw GPS is insufficient. |
 | 3:30–4:10 | API `/docs`, tests and Git | Typed contract, safe errors, ignored local artifacts, exact dependencies and test evidence; acknowledge visual sign-off if still pending. |
 
 If artifacts are unavailable, demonstrate source/contracts/tests and honest unavailable states. Checked-in figures are historical measured evaluation outputs, not dashboard screenshots.
@@ -126,14 +126,14 @@ Production preview: build first, then `.\scripts\run_frontend.ps1 -Preview -Port
 | `/driving` Driving Analytics | Trip/vehicle toggle; valid vehicle/powertrain filters; dates; Next/Previous; bounded tables; readable charts | [ ] |
 | `/quality` Data Quality | Bronze/Silver/quarantine reconciliation; missingness/gaps; SOC explanation; no invented complete sensors | [ ] |
 | `/ml` ML Intelligence | Validation/test and baseline controls; vehicle errors/pagination; speed/powertrain cohorts; CI meaning; EV/worse-vehicle limitations | [ ] |
-| `/prediction` Prediction Lab | 31 prepared features and units; raw-GPS warning; measured example → ≈36.61749 km/h; reset; optional-null coverage | [ ] |
+| `/prediction` Prediction Lab | Quick Demo defaults; Run example prediction → actual ≈36.61749 km/h; reset; expand Advanced for 31 features/units and optional-null coverage; raw-GPS warning | [ ] |
 
 Additional states:
 
 - [ ] **Loading:** DevTools Slow 3G + disabled cache; reload/navigate all pages and observe loading without stale results posing as new ones. Restore normal network afterward.
 - [ ] **Empty:** Driving trip filter vehicle `2147483647` (valid ID absent from VED); clear empty state, no stuck pagination; reset.
 - [ ] **Invalid filters:** invalid vehicle or inverted dates show validation and issue no unfiltered replacement request in Network.
-- [ ] **Invalid prediction:** required fields blank, negative speed or gap >2 seconds; validation without stale predictions, paths or tracebacks. Reload measured example afterward.
+- [ ] **Invalid prediction:** expand Advanced; required fields blank, negative speed or gap >2 seconds; validation without stale predictions, paths or tracebacks. Run the verified example afterward.
 - [ ] **Backend unavailable:** Ctrl+C only your backend terminal; reload/navigate all pages and confirm actionable errors with no invented values. Restart and use page/header Retry.
 - [ ] **Production preview:** repeat navigation, charts and form at `http://127.0.0.1:4173` after build. Development modules expose source filenames; production assets/API are scanned separately.
 

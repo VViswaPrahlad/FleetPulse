@@ -44,10 +44,16 @@ describe("responsive CSS structure (not visual rendering)", () => {
             <div className="feature-grid" data-testid="features" />
             <div className="table-wrap" data-testid="table" />
             <button className="mobile-only" data-testid="mobile" />
+            <div className="prediction-quick-demo">
+              <div className="actions">
+                <button className="button primary" data-testid="quick-demo" />
+              </div>
+            </div>
           </>,
         );
         const computed = (id: string) =>
           getComputedStyle(screen.getByTestId(id));
+        expect(computed("quick-demo").width).toBe(width <= 600 ? "100%" : "");
         expect(computed("kpis").gridTemplateColumns.replace(/\s+/g, "")).toBe(
           width <= 900 ? "repeat(2,minmax(0,1fr))" : "repeat(4,minmax(0,1fr))",
         );

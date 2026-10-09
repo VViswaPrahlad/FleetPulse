@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRight, FlaskConical, RotateCcw } from "lucide-react";
 import example from "../../../docs/examples/day7_prediction_request.json";
 import {
@@ -63,6 +63,7 @@ export function prepare(contract: Contract, inputs: Record<string, string>) {
 }
 export function PredictionLab() {
   const contract = useApi<Contract>("/ml/features");
+  const inFlight = useRef(false);
   const [inputs, setInputs] = useState<Record<string, string>>({}),
     [result, setResult] = useState<Prediction>(),
     [error, setError] = useState(""),
@@ -92,14 +93,21 @@ export function PredictionLab() {
     setResult(undefined);
     setError("");
   };
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  const exampleInputs = () =>
+    Object.fromEntries(
+      Object.entries(example.features).map(([name, value]) => [
+        name,
+        value == null ? "" : String(value),
+      ]),
+    );
+  async function predict(values: Record<string, string>) {
+    if (inFlight.current || !contract.data) return;
+    inFlight.current = true;
     setError("");
     setResult(undefined);
-    if (!contract.data) return;
+    setBusy(true);
     try {
-      const payload = prepare(contract.data, inputs);
-      setBusy(true);
+      const payload = prepare(contract.data, values);
       setResult(
         await request<Prediction>("/ml/predict", {
           method: "POST",
@@ -119,15 +127,26 @@ export function PredictionLab() {
             : ""),
       );
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
+  }
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    await predict(inputs);
+  }
+  function runExample() {
+    if (inFlight.current) return;
+    const values = exampleInputs();
+    setInputs(values);
+    void predict(values);
   }
   return (
     <>
       <Heading
         eyebrow="PREDICTION LAB"
         title="A prepared context. A measured forecast."
-        description="Run the saved Day 6 model locally with its exact 31-feature inference contract."
+        description="Try a verified telemetry example, or supply the saved model's exact 31 prepared features."
       />
       <div className="notice warning">
         <strong>Raw GPS input is not sufficient.</strong> Supply a fully
@@ -138,31 +157,25 @@ export function PredictionLab() {
       <State {...contract}>
         {contract.data && (
           <>
-            <Panel
-              title="Prepared feature vector"
-              subtitle="Every field is required in the payload. Only six optional sensor means may be null."
-              action={
+            <div className="prediction-quick-demo">
+              <Panel
+                title="Quick Demo"
+                subtitle="One verified context. A real API forecast."
+              >
+                <p>
+                  Run the existing anonymous Day 7 example from actual prepared,
+                  past-only telemetry. The button loads all 31 verified features
+                  and calls the saved model through the prediction API.
+                </p>
                 <div className="actions">
                   <button
-                    className="button secondary"
+                    className="button primary"
                     disabled={busy}
-                    onClick={() => {
-                      setInputs(
-                        Object.fromEntries(
-                          Object.entries(example.features).map(
-                            ([name, value]) => [
-                              name,
-                              value == null ? "" : String(value),
-                            ],
-                          ),
-                        ),
-                      );
-                      setResult(undefined);
-                      setError("");
-                    }}
+                    onClick={runExample}
                   >
-                    <FlaskConical size={15} />
-                    Load verified example
+                    <FlaskConical size={17} />
+                    {busy ? "Running prediction…" : "Run example prediction"}
+                    <ArrowRight size={16} />
                   </button>
                   <button
                     className="button secondary"
@@ -173,86 +186,18 @@ export function PredictionLab() {
                     Reset
                   </button>
                 </div>
-              }
-            >
-              <p className="footnote">
-                The example is the documented, anonymous Day 7 vector from
-                actual prepared telemetry. Blank sensor means represent null,
-                never zero. Observed fractions must explicitly declare
-                availability.
-              </p>
-              <form onSubmit={submit} noValidate>
-                <fieldset disabled={busy} className="feature-fieldset">
-                  {groups.map((group) => (
-                    <div className="feature-group" key={group.name}>
-                      <h3>
-                        {group.name}
-                        <span>
-                          {
-                            contract.data!.features.filter((f) =>
-                              group.match(f.name),
-                            ).length
-                          }{" "}
-                          features
-                        </span>
-                      </h3>
-                      <div className="feature-grid">
-                        {contract
-                          .data!.features.filter((f) => group.match(f.name))
-                          .map((f) => (
-                            <label key={f.name} htmlFor={f.name}>
-                              <span>{human(f.name)}</span>
-                              <div className="unit-input">
-                                <input
-                                  id={f.name}
-                                  name={f.name}
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={inputs[f.name] ?? ""}
-                                  placeholder={
-                                    f.nullable
-                                      ? "Null if unavailable"
-                                      : "Required"
-                                  }
-                                  aria-required={!f.nullable}
-                                  onChange={(e) => {
-                                    setInputs((old) => ({
-                                      ...old,
-                                      [f.name]: e.target.value,
-                                    }));
-                                    setResult(undefined);
-                                    setError("");
-                                  }}
-                                />
-                                <small>{f.units}</small>
-                              </div>
-                              <code>{f.name}</code>
-                            </label>
-                          ))}
-                      </div>
-                    </div>
-                  ))}
-                </fieldset>
-                {error && (
-                  <div className="notice error" role="alert">
-                    {error}
-                  </div>
-                )}
-                <div className="prediction-submit">
-                  <span className="muted">
-                    60s history → next 60s mean speed · CPU inference only
-                  </span>
-                  <button
-                    className="button primary"
-                    disabled={busy}
-                    type="submit"
-                  >
-                    {busy ? "Running inference…" : "Predict mean speed"}
-                    <ArrowRight size={16} />
-                  </button>
-                </div>
-              </form>
-            </Panel>
+                <p className="footnote">
+                  No prediction is pre-filled. Results appear only after a
+                  successful API response. Inspect the example's prepared
+                  features in Advanced below.
+                </p>
+              </Panel>
+            </div>
+            {error && (
+              <div className="notice error" role="alert">
+                {error}
+              </div>
+            )}
             {result && (
               <section
                 className="prediction-result"
@@ -279,6 +224,102 @@ export function PredictionLab() {
                 </div>
               </section>
             )}
+            <details className="prediction-advanced">
+              <summary>Advanced: Prepared feature vector</summary>
+              <Panel
+                title="Prepared feature vector"
+                subtitle="Every field is required in the payload. Only six optional sensor means may be null."
+                action={
+                  <div className="actions">
+                    <button
+                      className="button secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setInputs(exampleInputs());
+                        setResult(undefined);
+                        setError("");
+                      }}
+                    >
+                      <FlaskConical size={15} />
+                      Load verified example
+                    </button>
+                  </div>
+                }
+              >
+                <p className="footnote">
+                  The example is the documented, anonymous Day 7 vector from
+                  actual prepared telemetry. Blank sensor means represent null,
+                  never zero. Observed fractions must explicitly declare
+                  availability.
+                </p>
+                <form onSubmit={submit} noValidate>
+                  <fieldset disabled={busy} className="feature-fieldset">
+                    {groups.map((group) => (
+                      <div className="feature-group" key={group.name}>
+                        <h3>
+                          {group.name}
+                          <span>
+                            {
+                              contract.data!.features.filter((f) =>
+                                group.match(f.name),
+                              ).length
+                            }{" "}
+                            features
+                          </span>
+                        </h3>
+                        <div className="feature-grid">
+                          {contract
+                            .data!.features.filter((f) => group.match(f.name))
+                            .map((f) => (
+                              <label key={f.name} htmlFor={f.name}>
+                                <span>{human(f.name)}</span>
+                                <div className="unit-input">
+                                  <input
+                                    id={f.name}
+                                    name={f.name}
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={inputs[f.name] ?? ""}
+                                    placeholder={
+                                      f.nullable
+                                        ? "Null if unavailable"
+                                        : "Required"
+                                    }
+                                    aria-required={!f.nullable}
+                                    onChange={(e) => {
+                                      setInputs((old) => ({
+                                        ...old,
+                                        [f.name]: e.target.value,
+                                      }));
+                                      setResult(undefined);
+                                      setError("");
+                                    }}
+                                  />
+                                  <small>{f.units}</small>
+                                </div>
+                                <code>{f.name}</code>
+                              </label>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
+                  </fieldset>
+                  <div className="prediction-submit">
+                    <span className="muted">
+                      60s history → next 60s mean speed · CPU inference only
+                    </span>
+                    <button
+                      className="button primary"
+                      disabled={busy}
+                      type="submit"
+                    >
+                      {busy ? "Running inference…" : "Predict mean speed"}
+                      <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </form>
+              </Panel>
+            </details>
           </>
         )}
       </State>
