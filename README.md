@@ -3,6 +3,13 @@
 FleetPulse is a local vehicle telemetry project. The approved primary source
 is the [Vehicle Energy Dataset (VED)](https://github.com/gsoh/VED).
 
+**Day 6 is complete:** a validation-selected HistGradientBoostingRegressor
+achieves test MAE **10.887 km/h** and RMSE **14.091 km/h**, versus last-speed
+baseline **14.056 / 18.803** on the identical held-out examples. Pooled MAE
+improves 22.55%; 34 of 50 test vehicles improve, while 16 worsen. The macro
+vehicle improvement interval crosses zero, and no EV is represented in test.
+See [the measured Day 6 report](docs/day6_report.md) and its diagnostic figures.
+
 **Day 5 is complete:** the Silver audit reproduces all 34,348 eligible speed
 windows across 318 vehicles. The ML dataset retains 11,549 examples whose
 complete contexts share no observations. Vehicle-held-out splits contain
@@ -82,8 +89,8 @@ The initial fuel-use forecasting proposal is documented in
 [the ML definition](docs/ml_problem_definition.md). Sparse direct fuel-rate
 coverage is now measured; no missing fuel signal is imputed on Day 2.
 Silver and feasibility analysis are complete. Day 4 adds Gold and DuckDB.
-Advanced ML training, dashboards and cloud services remain deferred. Day 5 adds
-feature engineering and baselines; work stops after Day 5.
+Day 5 adds feature engineering and baselines; Day 6 adds local CPU model
+training/evaluation. Dashboards and cloud services remain deferred. Stop after Day 6.
 
 ## Repeat Day 3 using validated caches
 
@@ -151,4 +158,28 @@ observation from being shared between retained contexts in a trip.
 Split assignments, per-trip coverage audit, train-only historical constant,
 baseline metrics and reproducibility metadata live under ignored `results/day5/`.
 Only implementation, tests and measured text reports are committed to GitHub;
-ML-ready Parquet and generated metrics remain local. Stop after Day 5.
+ML-ready Parquet and generated metrics remain local. These are the Day 5 outputs
+that Day 6 reuses without modification.
+
+## Day 6 CPU model and honest evaluation
+
+```powershell
+.\.venv\Scripts\python.exe -m src.ml.train_speed
+.\scripts\run_day2.ps1 -Script scripts/finalize_day6_statistics.py
+.\scripts\run_day2.ps1 -Script scripts/validate_day6_actual.py
+.\scripts\run_day2.ps1 -Script scripts/plot_day6.py
+.\.venv\Scripts\python.exe -m pytest tests/test_day6_ml.py -q --basetemp=data/tmp/pytest-day6
+```
+
+Six fixed configurations fit training vehicles only; pooled validation MAE
+selects one. No internal row-level early stopping or validation/test refit is
+used. Native NaN handling preserves missing sensor features. Feature importance
+uses validation only; all 31 features are retained. Test diagnostics and paired
+vehicle-cluster intervals use the frozen selected model and unchanged examples.
+
+The local model is `models/day6/hist_gradient_boosting.joblib`, with adjacent
+inference metadata. `src.ml.inference.load_model()` checks integrity and version;
+`predict_features()` accepts exactly the 31 approved columns, never IDs or target.
+Only load trusted locally generated Joblib artifacts. Models, datasets and
+`results/day6/` remain ignored. Three lightweight PNG figures are checked in
+under `docs/figures/day6/`. No dashboard or Day 7 work is started.

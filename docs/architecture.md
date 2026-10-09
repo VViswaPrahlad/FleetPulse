@@ -170,3 +170,33 @@ The final dataset manifest is written after validated staged files replace
 fixed outputs; consumers must not query during multi-file publication.
 The historical baseline fits just one mean from training labels. No estimator
 training, dashboard or Day 6 work is performed. See [Day 5 report](day5_report.md).
+
+## Day 6 training and conditional uncertainty
+
+```text
+Frozen Day 5 Parquet + manifests -> checksum/schema/vehicle/temporal audit
+    -> exactly 31 past-only numeric columns (native NaN preserved)
+    -> six CPU HistGradientBoosting fits on train only, fixed seed/one thread
+    -> pooled validation MAE selection, no internal early-stopping split
+    -> persist frozen selection before test metrics, no train+validation refit
+    -> validation-only permutation importance (no feature deletion/retraining)
+    -> identical-example baseline/test evaluation
+    -> vehicle errors + paired whole-vehicle bootstrap + cohort diagnostics
+    -> local ignored model/metadata/results and three lightweight public figures
+```
+
+All prior data and Day 5 outputs are hash-checked before/after. The selected
+model is serialized under `models/day6/`; metadata fixes feature order, versions,
+training-input hash, forecast units, missing-value policy and selected parameters.
+Inference accepts exactly the allowlisted predictors, checks model integrity and
+preserves NaN. Joblib is a trusted-local artifact format, not an untrusted upload
+format. Native missing-value branches learn only from training data; IDs, target,
+future telemetry and absolute time never enter the predictor matrix.
+
+Bootstrap uses 2,000 seeded paired draws of whole vehicles, preserving each
+vehicle's window count for pooled metrics and equal vehicle weighting for macro
+metrics. It is conditional on the fixed fitted model/split, not retraining
+uncertainty or population representativeness. Target speed bins are diagnostic
+labels only. No EV appears in test, no new test-driven hyperparameter is tried,
+and negative subgroup/vehicle results are reported. No dashboard/Day 7 is begun.
+See [Day 6 report](day6_report.md) for actual outcomes and lightweight figures.

@@ -55,16 +55,19 @@ must revalidate them against Silver and the frozen policy before training.
   Never randomly split overlapping windows. Fit preprocessing, normalization,
   optional feature imputation and selection only on training vehicles.
 
-Future baseline: persistence of the preceding 60-second time-weighted mean
-speed. A training-only median reference may also be reported. A future
-HistGradientBoostingRegressor is a candidate after split/feature checks;
-no new ML package is installed and no fitting happens today.
+Day 5 implements last-speed, past-mean persistence, and training-only global
+historical-mean baselines. Day 6 fits HistGradientBoostingRegressor using native
+NaN handling and six fixed validation-only configurations. No imputation/scaling
+or internal random-row early stopping is used; the model stays training-only.
+Neither permutation importance nor test diagnostics change the 31-feature list.
 
 Report held-out **MAE and RMSE in km/h**, per-vehicle errors and macro averages,
 powertrain coverage, eligible/excluded windows and overlap policy. Compare
 with persistence on identical test windows; keep final test vehicles untouched
-until the definition and choices are frozen. No regression accuracy claim or
-performance number exists yet. VED is geographically/temporally limited and
+until the definition and choices are frozen. Day 6 publishes actual pooled and
+vehicle-macro errors with paired vehicle-cluster confidence intervals in the
+[Day 6 report](day6_report.md); no regression accuracy claim is made.
+VED is geographically/temporally limited and
 reported speed is not independently calibrated ground truth.
 
 ## Why fuel forecasting was rejected

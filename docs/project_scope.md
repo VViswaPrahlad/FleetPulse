@@ -59,7 +59,7 @@ VED's signal is ECU/OBD reported, coverage may vary by vehicle, and the corpus i
 
 ## Current checkpoint
 
-Dataset approval was followed by validated Day 2 Bronze, Day 3 Silver/feasibility and Day 4 Gold/DuckDB. On 2026-10-09 the user authorized Day 5 feature engineering, held-out splits, fixed baselines, and an audited commit/push. Stop after Day 5; advanced model training and dashboard work remain unstarted. Historical daily reports retain the decisions applicable at their checkpoints.
+Dataset approval was followed by validated Days 2–5: Bronze, Silver/feasibility, Gold/DuckDB, and causal feature windows/baselines. On 2026-10-09 the user authorized Day 6 HistGradientBoosting training, validation-only selection, fixed test evaluation, diagnostics, and an audited commit/push. Stop after Day 6; dashboard and Day 7 work remain unstarted. Historical daily reports retain the decisions applicable at their checkpoints.
 
 ## Sources
 
