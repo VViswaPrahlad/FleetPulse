@@ -1,5 +1,7 @@
 # Deployment-preparation source review
 
+**Historical checkpoint:** this review preceded the owner's successful Render deployment. Current [live links and project status](../README.md#live-deployment) are in the README; the pre-deployment blockers below describe the original checkpoint.
+
 Reviewed locally on **2026-10-09**, from `main` at **2dc4fa1**. This review covers source/configuration publication only. No Render service, release asset, deployment bundle or public-profile update is published. The generated bundle stays local and ignored.
 
 ## Files reviewed for the preparation commit

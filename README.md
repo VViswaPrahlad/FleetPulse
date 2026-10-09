@@ -1,12 +1,26 @@
 ﻿# FleetPulse
 
+[**Live Demo**](https://fleetpulse-dashboard.onrender.com) · [GitHub Source](https://github.com/VViswaPrahlad/FleetPulse) · [Live API Docs](https://fleetpulse-api-got2.onrender.com/docs)
+
 **Vehicle telemetry → auditable analytics → leakage-safe forecasting → FastAPI and React.**
 
-FleetPulse is a full-stack Data Engineering + ML portfolio project using genuine vehicle telemetry. It investigates whether the previous minute of driving can predict mean speed over the next minute, and exposes fleet analytics, measurement quality and model evaluation through a local dashboard.
+FleetPulse is a full-stack Data Engineering + ML portfolio project using genuine vehicle telemetry. A **PySpark Bronze–Silver–Gold pipeline** preserves source observations, standardizes measurements and produces auditable analytics. **DuckDB** queries those aggregates; **FastAPI** exposes fleet metrics and a trained next-minute speed forecasting model; a **React + TypeScript dashboard** makes the results interactive.
 
-The project reconciles **22,436,808 observations**, **384 vehicles** and **32,552 trips**. It demonstrates a reproducible chain from source records to held-out vehicle evaluation, without claiming fleet-wide production readiness.
+The ML task predicts mean vehicle speed over the next 60 seconds from the preceding 60 seconds of telemetry. The project demonstrates a reproducible chain from source records to held-out vehicle evaluation, without claiming fleet-wide production readiness.
 
-**Release status:** automated validation passes; desktop/mobile visual sign-off remains pending because available browser tools cannot open a browser. No dashboard screenshots or visual-verification claims are fabricated. Follow the [manual browser checklist](docs/demo_guide.md#manual-browser-sign-off).
+## Project highlights
+
+| Verified result | Value |
+|---|---:|
+| Ingested telemetry observations | **22,436,808** |
+| Retained Silver observations | **22,434,106** |
+| Vehicles | **384** |
+| Trips | **32,552** |
+| Test MAE | **10.887 km/h** |
+| Test RMSE | **14.091 km/h** |
+| Test MAE improvement over last-observed speed | **≈22.6%** |
+
+Explore fleet statistics, driving analytics, data quality and model evaluation in the live dashboard. In **Prediction Lab**, click **Run example prediction** to submit the verified prepared vector to the real API; the saved model returns approximately **36.62 km/h**. The full 31-feature form remains available under Advanced.
 
 ## Architecture and stack
 
@@ -37,7 +51,7 @@ flowchart LR
 | Frontend | React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4, Recharts, Lucide |
 | Validation | Pytest, Vitest, Testing Library, real-artifact API/DOM checks |
 
-Exact dependencies are pinned in [requirements.txt](requirements.txt) and [package-lock.json](dashboard/package-lock.json). CPU execution is sufficient; the GPU is unused. No cloud infrastructure is required.
+Exact dependencies are pinned in [requirements.txt](requirements.txt) and [package-lock.json](dashboard/package-lock.json). CPU execution is sufficient; the GPU is unused. The project can run entirely locally; the public demo is hosted on Render.
 
 ## Dataset and engineering
 
@@ -133,7 +147,9 @@ npm.cmd --prefix dashboard run typecheck
 npm.cmd --prefix dashboard run build
 ```
 
-The latest release run passes **144 Python tests** and **32 frontend tests**, strict TypeScript checks and a production build. Real-artifact integration reconciles 5,332 projected Gold fields, exercises all five compiled-page DOM flows and verifies saved-model inference and backend-unavailable behavior. DOM/CSS checks do not establish visual correctness. Four frontend saved-contract tests skip when their ignored local Day 8 contracts are absent in a fresh clone.
+The Day 10 release validation passed **144 Python tests** and **32 frontend tests**, strict TypeScript checks and a production build. The subsequent [deployment-preparation review](docs/deployment_review.md) passed **90 relevant Python tests** and **41 frontend tests**, including the Quick Demo and public-API configuration. These are recorded verification runs; no new evaluations are claimed here.
+
+Real-artifact integration reconciles 5,332 projected Gold fields, exercises all five compiled-page DOM flows and verifies saved-model inference and backend-unavailable behavior. DOM/CSS checks do not establish complete cross-browser visual correctness; the [manual browser checklist](docs/demo_guide.md#manual-browser-sign-off) documents that scope. Four frontend saved-contract tests skip when their ignored local Day 8 contracts are absent in a fresh clone.
 
 [Day 10 report](docs/day10_report.md) records measured startup/runtime/storage, preservation and repository audits. [Day 9 hardening](docs/day9_report.md) documents confirmed defects and performance limits. New release checks write only ignored `results/day10/`; prior outputs stay unchanged.
 
@@ -141,12 +157,17 @@ The latest release run passes **144 Python tests** and **32 frontend tests**, st
 
 VED is one historical regional cohort with irregular sampling, structural missingness and uncalibrated ECU readings. Strict continuity/exact endpoints introduce offline selection bias. There are 50 independent test vehicles, not 1,919 independent drivers, and no test EVs.
 
-This is a local portfolio application without authentication, TLS, public deployment or operational SLAs. Vite development modules expose source filenames; keep development servers loopback-only. The production bundle and API are checked for paths and recognized secrets. Manual desktop/mobile visual sign-off is still required.
+This is a portfolio demonstration, deployed over HTTPS on Render, without authentication or operational SLAs. Free-tier availability and cold starts apply. Vite development modules expose source filenames; keep local development servers loopback-only. The production bundle and API are checked for paths and recognized secrets; automated DOM checks are not a substitute for full desktop/mobile browser inspection.
 
 Future work could investigate external-region/vehicle validation, low/high-speed behavior, causal raw-telemetry preparation and deployment controls. None is implemented in this release.
 
 For interviews: [3–5 minute demo and engineering decisions](docs/demo_guide.md), [questions and answers](docs/interview_qa.md), and [approved ML problem definition](docs/ml_problem_definition.md).
 
-## Optional public portfolio deployment — prepared, not deployed
+## Live deployment
 
-[Render deployment guide](docs/deployment_guide.md) provides a serving-only artifact bundle, runtime lock, Free Web Service/Static Site settings, strict public CORS and a public API build URL. The original local workflow stays unchanged. No data/model upload, deployment or live-URL success is claimed; artifact publication and live/browser acceptance remain separate manual steps.
+- **Dashboard:** [fleetpulse-dashboard.onrender.com](https://fleetpulse-dashboard.onrender.com) — React on Render Static Site.
+- **Backend:** `https://fleetpulse-api-got2.onrender.com` — FastAPI on Render Free Web Service, with a [health endpoint](https://fleetpulse-api-got2.onrender.com/api/v1/health) and [interactive API documentation](https://fleetpulse-api-got2.onrender.com/docs).
+
+Render's free backend can sleep when idle and may take time to wake up. If the dashboard initially reports that the API is unavailable or waking, wait about a minute and retry. There are no fabricated fallback metrics or predictions.
+
+The live service uses a compact bundle of genuine Gold analytics, saved evaluation summaries and the existing trained model; raw VED, Bronze/Silver telemetry and training tables are excluded. [Deployment and rebuild reference](docs/deployment_guide.md) preserves the runtime lock, artifact integrity checks and reproducible settings. The local workflow above remains available.

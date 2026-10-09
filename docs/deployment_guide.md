@@ -1,6 +1,8 @@
-# Render portfolio deployment — preparation only
+# Render portfolio deployment and rebuild reference
 
-Prepared and reviewed on **2026-10-09**. Deployment-preparation source/configuration is versioned separately from artifact publication. Nothing has been deployed, no bundle has been uploaded and no public profile has been changed. No live Render URL exists or has been verified. Existing local startup scripts, local proxy defaults, model and data outputs remain intact. See the [source review](deployment_review.md) for the publication scope and checks.
+**Live dashboard:** [fleetpulse-dashboard.onrender.com](https://fleetpulse-dashboard.onrender.com). **Live API:** `https://fleetpulse-api-got2.onrender.com`, with [health](https://fleetpulse-api-got2.onrender.com/api/v1/health) and [API docs](https://fleetpulse-api-got2.onrender.com/docs). The owner has completed deployment and verified the example forecast at approximately 36.62 km/h.
+
+The material below preserves the **2026-10-09 preparation/review checkpoint** as a rebuild reference. Its local measurements are not Render benchmarks; historical approval boundaries and browser limitations describe that checkpoint. Existing local startup scripts, model and data outputs remain intact. See the [source review](deployment_review.md) for the original publication scope and checks.
 
 Target: **Render Static Site** for React plus **Render Free Web Service** for FastAPI. No database, persistent disk, Docker, Java, Spark, retraining or ETL is required for serving. The supplied `render.yaml` is a settings template; applying/creating services would deploy and requires a separate decision.
 
@@ -112,14 +114,14 @@ Do not append `/api/v1`; the frontend adds that prefix. This variable is public 
 
 The Blueprint uses `sync: false` values you must provide; creating it still triggers initial deployment even with auto-deploy off. Treat it as a template until actual service URLs and approved bundle location exist. [Blueprint reference](https://render.com/docs/blueprint-spec), [health checks](https://render.com/docs/health-checks).
 
-## Manual deployment steps — NOT performed
+## Manual deployment steps — reference for a fresh deployment
 
-1. Source/configuration publication and **serving-only artifact publication** are separate actions. This source review authorizes only the safe preparation commit. Audit the manifest/license/Gold fields before any later artifact upload. Do not force-add ignored datasets/models to Git.
+1. Source/configuration publication and **serving-only artifact publication** are separate actions. For a fresh deployment, audit the manifest/license/Gold fields before any artifact upload. Do not force-add ignored datasets/models to Git.
 2. After separate artifact-publication approval, put **only** the verified small archive at a stable trusted HTTPS location. A public GitHub release asset under your existing repository is one possible no-additional-service-cost location; creating/uploading it needs approval. Preserve this bundle's license/provenance and record its SHA-256. No signed/private credentials belong in frontend configuration. Render service creation also remains a separate approval step.
 3. In Render, verify free-plan/billing limits and connect the approved source repository. Recommended manual sequence to avoid guessing domains: create the Static Site first, record its assigned URL, and defer deployment if the UI permits. Otherwise its initial build intentionally fails the missing-API-origin guard; it never publishes a localhost-configured build.
 4. Create the **Free** API with that exact assigned frontend origin, approved bundle URL/hash, Python pin and settings above. Render build downloads only the compact archive. Confirm build/start logs, health **and readiness** 200 and model identity `hgb-day6-ea8d587632fa`. If OOM/incompatible wheel/hash/download errors occur, stop; do not silently upgrade or retrain.
 5. Set the frontend's `VITE_API_URL` to the actual API HTTPS origin, set Node version/rewrite, build it and verify its assigned HTTPS URL. If frontend host changes, update API CORS and redeploy. Do not apply a second Blueprint that accidentally creates duplicate services.
-6. Verify the live endpoints and manual checklist below. Only then claim deployment success or consider public-profile updates. Neither is authorized/performed in this preparation.
+6. Verify the live endpoints and manual checklist below before claiming success for a new deployment or updating public-profile links. These instructions are a rebuild reference, not a request to recreate the existing live services.
 
 ## Verification already completed locally
 
