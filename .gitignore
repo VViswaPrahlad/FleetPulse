@@ -81,3 +81,11 @@ outputs/
 build/
 dist/
 *.egg-info/
+
+# Day 8 frontend dependencies, build/test artifacts and local caches.
+node_modules/
+coverage/
+*.tsbuildinfo
+playwright-report/
+test-results/
+.npm/

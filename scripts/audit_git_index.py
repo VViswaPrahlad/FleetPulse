@@ -8,11 +8,12 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 FORBIDDEN_DIRS = {'data','results','.venv','venv','env','__pycache__','.pytest_cache',
     '.vscode','.idea','.aws','.ssh','.codex','.agents','models','artifacts','outputs',
-    'logs','spark-warehouse','metastore_db','build','dist'}
+    'logs','spark-warehouse','metastore_db','build','dist','node_modules','coverage',
+    'playwright-report','test-results','.npm'}
 FORBIDDEN_SUFFIXES = {'.csv','.parquet','.7z','.zip','.rar','.tar','.gz','.bz2','.xz',
     '.db','.sqlite','.sqlite3','.duckdb','.wal','.pyc','.pyo','.log',
     '.pkl','.pickle','.joblib','.onnx','.pt','.pth','.h5','.keras','.bin','.model',
-    '.safetensors','.ckpt','.npy','.npz','.pem','.key','.p12','.pfx'}
+    '.safetensors','.ckpt','.npy','.npz','.pem','.key','.p12','.pfx','.tsbuildinfo'}
 PATTERNS = {
     'private key': re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----'),
     'GitHub token': re.compile(rb'(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{50,})'),

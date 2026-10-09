@@ -186,3 +186,44 @@ The second command validates all existing prepared vectors, real response
 reconciliation, exact saved-model/API inference, and a temporary loopback
 Uvicorn child. It terminates its own child and checks earlier artifact hashes.
 It writes only Day 7 verification outputs and anonymous API examples.
+
+## Day 8 dashboard additions
+
+The existing versioned contracts are unchanged. Two read-only endpoints expose
+whitelisted fields from already generated reports; they do not process telemetry.
+
+### `GET /api/v1/quality/pipeline`
+
+Returns `bronze_observations`, `silver_observations`, `quarantined_observations`,
+`gold_source_observations`, `gold_vehicles`, `gold_trips`, `exclusion_reasons`,
+`missing_measurements` and `semantics`. Counts are nonnegative. The adapter
+checks Bronze = Silver + quarantine and Gold source observations = Silver.
+Actual counts: 22,436,808 → 22,434,106; 2,702 negative elapsed observations
+quarantined; Gold aggregates the retained observations into 384 vehicle and
+32,552 trip summaries. Gold's source-observation count is not its physical row count.
+
+Missing counts expose only speed, fuel rate, MAF, RPM, absolute load, outside
+temperature, SOC and battery current. Per-file metadata and local paths are
+not returned. Missing/malformed/oversized/unreconciled reports return a safe
+503 `analytics_unavailable`. The saved Day 3 report is bounded to 4 MB.
+
+### `GET /api/v1/ml/cohorts`
+
+Parameters: `split=validation|test` (default test),
+`dimension=actual_target_speed_range|powertrain` (default speed range).
+Returns `{items,total,limit:100,offset:0}`. Each item contains only `split`,
+`dimension`, `category`, `method`, `windows`, `vehicles`, `mae_kmh`, `rmse_kmh`.
+Method names match the existing four-method metric contract. The saved JSON
+is bounded to 250 KB and 100 records before filtering. Empty filtered cohorts
+return an empty page. Missing/invalid reports return safe 503
+`evaluation_unavailable`; unknown/repeated queries or invalid enum values
+return 422. Actual test data has five speed bins and three powertrain groups
+(ICE, HEV, PHEV), four methods each. **There are no test EVs.**
+
+Categories derived from actual future target speed are evaluation diagnostics
+only. They must never become inference inputs or model-selection features.
+The dashboard reads these saved results without test-driven retraining.
+
+Both report adapters share a four-entry signature-keyed LRU. Existing route
+pagination, error sanitization and unknown-query rejection also apply. Verify
+with `tests/test_day8_reports.py` and `scripts/validate_day8_actual.py`.

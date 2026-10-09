@@ -1,4 +1,6 @@
 from fastapi import APIRouter,Request
+from typing import Literal
+from src.api.services.dashboard_reports import CohortMetric,cohorts
 
 from src.api.routes.analytics import Limit,Offset,FilterIdentifier
 from src.api.schemas.analytics import ModelMetrics,VehicleError,Page,Split,Method
@@ -19,6 +21,12 @@ def errors(request:Request,limit:Limit=25,offset:Offset=0,split:Split='test',
     if vehicle_id is not None:
         filters.append(('vehicle_id','=',vehicle_id))
     return request.app.state.analytics.page('vehicle_errors',filters,limit,offset)
+
+
+@router.get('/ml/cohorts',response_model=Page[CohortMetric])
+def cohort_metrics(request:Request,split:Split='test',
+                   dimension:Literal['actual_target_speed_range','powertrain']='actual_target_speed_range'):
+    return cohorts(request.app.state.settings,split,dimension)
 
 
 @router.get('/ml/features',response_model=FeatureContract,response_model_exclude_none=True)

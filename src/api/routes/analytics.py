@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter,Path,Query,Request
 
 from src.api.errors import ApiError
+from src.api.services.dashboard_reports import PipelineReport,pipeline
 from src.api.schemas.analytics import (AnalyticsMetrics,VehicleAnalytics,TripAnalytics,
     DailyAnalytics,MonthlyAnalytics,PowertrainAnalytics,Page,Powertrain,QualitySummary)
 
@@ -82,3 +83,9 @@ def quality(request:Request):
     service=request.app.state.analytics
     return {'overview':service.one('fleet_overview'),
             'flags':service.page('quality_metrics',limit=100)}
+
+
+@router.get('/quality/pipeline',response_model=PipelineReport)
+def pipeline_report(request:Request):
+    """Reconciled historical pipeline counts from the existing small Day 3 report."""
+    return pipeline(request.app.state.settings,request.app.state.analytics)

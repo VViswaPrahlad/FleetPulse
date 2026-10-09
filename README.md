@@ -216,3 +216,52 @@ The demo is loopback-only and unauthenticated. Provide existing local Gold,
 model and evaluation artifacts; they are intentionally absent from GitHub.
 A fresh checkout without artifacts can serve health/docs but reports not ready.
 No Streamlit, React, dashboard or Day 8 implementation is added on Day 7.
+
+## Day 8 React dashboard
+
+The approved React + TypeScript frontend is in `dashboard/`. It uses Vite,
+Tailwind CSS, Recharts and Lucide, with five routes: Fleet Overview, Driving
+Analytics, Data Quality, ML Intelligence and Prediction Lab. Every displayed
+metric comes from the local `/api/v1` API. Filters, bounded pagination,
+loading/empty/error states and a mobile sidebar are implemented.
+
+```powershell
+# From FleetPulse, first installation only (Node 24 recommended):
+$env:npm_config_cache = Join-Path (Get-Location) 'data/tmp/npm-day8'
+npm.cmd ci --prefix dashboard
+# Terminal 1:
+.\scripts\run_backend.ps1
+# Terminal 2:
+.\scripts\run_frontend.ps1
+# Open http://127.0.0.1:5173
+```
+
+Both servers bind loopback. Vite proxies `/api` to the existing backend; use
+`-BackendPort` to change the process-local proxy port. Production preview:
+`npm.cmd --prefix dashboard run build`, then
+`.\scripts\run_frontend.ps1 -Preview -Port 4173`. Preview is a local validation
+server, not a deployment. No ETL, training, cloud service or dashboard dataset
+copy is needed. Existing local artifacts are required; missing dependencies
+appear as explicit error states rather than fabricated values.
+
+Prediction Lab accepts exactly the API's 31 prepared past-only features.
+Raw GPS is insufficient. Six optional sensor means can be null only with
+zero measured availability; the backend validates statistical coherence.
+The opt-in example is the anonymous, actual Day 7 prepared vector, not synthetic
+telemetry. The API cannot certify caller-supplied feature provenance.
+
+```powershell
+npm.cmd --prefix dashboard run typecheck
+npm.cmd --prefix dashboard test
+npm.cmd --prefix dashboard run build
+.\.venv\Scripts\python.exe -m pytest tests/test_day8_reports.py tests/test_day7_api.py -q --basetemp=data/tmp/pytest-day8-api
+$env:PYTHONPATH = (Get-Location).Path
+.\.venv\Scripts\python.exe scripts/validate_day8_actual.py
+```
+
+The last command hash-checks prior artifacts and verifies real API contracts,
+HTTP proxying, production-bundle DOM navigation and saved-model inference.
+It starts and terminates only its own loopback child servers. Contract tests
+are optional/skipped on a fresh checkout without local artifacts; the measured
+Day 8 run executes all of them. Build output, node_modules, caches and generated
+verification reports are ignored. See [Day 8 results and limitations](docs/day8_report.md).

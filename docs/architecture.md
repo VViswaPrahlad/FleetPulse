@@ -232,3 +232,41 @@ routes can remain available during partial dependency loss; liveness stays up.
 The launcher binds 127.0.0.1, one worker, with local React CORS and process-only
 settings. Earlier data, model and evaluation artifacts remain immutable.
 See [API contracts](api_contract.md) and [Day 7 measured report](day7_report.md).
+
+## Day 8 React + TypeScript client
+
+```text
+Browser -> loopback Vite development/preview server
+           -> React Router: overview / driving / quality / ml / prediction
+           -> typed abortable API client, loading/empty/safe error states
+           -> relative /api proxy -> existing FastAPI /api/v1
+                -> bounded Gold DuckDB queries (≤100 response rows)
+                -> saved Day 3 pipeline / Day 6 cohort JSON projections
+                -> unchanged Day 6 model, exact prepared 31-feature input
+```
+
+`dashboard/src/api.ts` owns response interfaces, request errors and cancellation.
+`components.tsx` owns presentation, pagination and bounded trend charts;
+`pages/Analytics.tsx` and `pages/Prediction.tsx` implement the five pages.
+`App.tsx` owns responsive navigation. CSS uses Tailwind's Vite integration,
+local system typography, navy surfaces and accessible contrast/focus styles.
+Recharts and framework code are split into separate production chunks.
+
+No raw observations or GPS locations are sent to the browser. Lists use
+25-record pages; trend charts use at most 100 cohorts at a time. Missing metrics
+render as a dash. Distance is identified as supported-interval integration,
+and trends are whole-trip reference-date cohorts, not hourly/live activity.
+ML limitations and vehicle-cluster uncertainty remain visible; actual target
+speed bins are diagnostic labels only. Prediction inputs start blank, require
+all 31 explicit values/null declarations, and never include vehicle IDs.
+
+Two read-only adapters expose pipeline reconciliation and ML cohort errors.
+They bound report sizes (4 MB / 250 KB), cache four file signatures and project
+only public numeric/categorical fields. They never scan telemetry or fit a
+model. Earlier dataset/model/evaluation artifacts are hash-protected.
+
+The Windows launcher sets only process environment values. The Vite proxy
+supports both development and local production preview without new CORS
+origins. Vitest uses one worker thread, jsdom and Testing Library; responsive
+checks are structural CSS checks, not pixel rendering. Real HTTP and built
+bundle DOM tests use existing local artifacts. See [Day 8 report](day8_report.md).
