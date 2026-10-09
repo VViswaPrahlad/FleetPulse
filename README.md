@@ -265,3 +265,29 @@ It starts and terminates only its own loopback child servers. Contract tests
 are optional/skipped on a fresh checkout without local artifacts; the measured
 Day 8 run executes all of them. Build output, node_modules, caches and generated
 verification reports are ignored. See [Day 8 results and limitations](docs/day8_report.md).
+
+## Day 9 integration and hardening
+
+Invalid vehicle/date filters pause API requests rather than fetching unfiltered
+data. The connection badge has an explicit retry after backend recovery, and
+gateway/malformed error envelopes produce safe actionable messages. Obsolete
+requests remain abortable. The backend launcher limits native CPU pools before
+imports using process-only OMP/OpenBLAS/MKL/NumExpr settings; the existing saved
+model and its predictions remain unchanged.
+
+```powershell
+$env:PYTHONPATH = (Get-Location).Path
+.\.venv\Scripts\python.exe scripts/validate_day9_actual.py
+.\.venv\Scripts\python.exe scripts/verify_day9_launcher.py
+.\.venv\Scripts\python.exe scripts/finalize_day9_statistics.py
+```
+
+These commands reconcile real artifacts, benchmark bounded loopback requests,
+check CORS/errors/missing dependencies, verify compiled UI behavior and actual
+backend shutdown, and terminate only their own process trees. They write ignored
+Day 9 reports. Ports 8000/5173 must be free; unrelated processes are never stopped.
+See [Day 9 measurements](docs/day9_report.md). No browser was available in the
+automation session: DOM tests do not establish desktop/mobile visual verification.
+Vite development modules expose development-only source filenames; API responses
+and compiled production assets passed path/secret checks. Keep the development
+server loopback-only; use the existing production preview for compiled assets.

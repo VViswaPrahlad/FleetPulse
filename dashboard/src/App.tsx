@@ -133,6 +133,15 @@ function Layout() {
               : health.error
                 ? "API unavailable"
                 : "Local API connected"}
+            {health.error && (
+              <button
+                type="button"
+                aria-label="Retry API connection"
+                onClick={health.retry}
+              >
+                Retry
+              </button>
+            )}
           </div>
         </header>
         <main id="main-content" tabIndex={-1}>

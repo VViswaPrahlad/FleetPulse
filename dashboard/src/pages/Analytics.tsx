@@ -208,12 +208,14 @@ export function Driving() {
   const invalid =
     vehicle !== "" && (!/^\d+$/.test(vehicle) || Number(vehicle) > 2147483647);
   const rows = useApi<Page<Trip | Vehicle>>(
-    query("/" + kind, {
-      limit: 25,
-      offset,
-      powertrain,
-      vehicle_id: kind === "trips" && !invalid ? vehicle : undefined,
-    }),
+    invalid && kind === "trips"
+      ? null
+      : query("/" + kind, {
+          limit: 25,
+          offset,
+          powertrain,
+          vehicle_id: kind === "trips" && !invalid ? vehicle : undefined,
+        }),
   );
   return (
     <>

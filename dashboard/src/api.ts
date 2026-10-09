@@ -153,27 +153,40 @@ export async function request<T>(
   try {
     body = await response.json();
   } catch {
+    if (!response.ok && response.status >= 500) {
+      throw new ApiError(
+        "Local API is unavailable. Start the FleetPulse backend and retry.",
+      );
+    }
     throw new ApiError("The API returned an unreadable response.");
   }
   if (!response.ok) {
     const error = (
-      body as { error?: { message?: string; details?: ApiError["details"] } }
-    ).error;
+      body as {
+        error?: { message?: string; details?: ApiError["details"] };
+      } | null
+    )?.error;
     throw new ApiError(
-      error?.message ?? `Request failed (${response.status}).`,
-      error?.details,
+      typeof error?.message === "string"
+        ? error.message
+        : `Request failed (${response.status}).`,
+      Array.isArray(error?.details) ? error.details : [],
     );
   }
   return body as T;
 }
-export function useApi<T>(path: string) {
+export function useApi<T>(path: string | null) {
   const [state, setState] = useState<{
     data?: T;
     loading: boolean;
     error?: string;
-  }>({ loading: true });
+  }>({ loading: path !== null });
   const [revision, setRevision] = useState(0);
   useEffect(() => {
+    if (path === null) {
+      setState({ loading: false });
+      return;
+    }
     const controller = new AbortController();
     setState({ loading: true });
     request<T>(path, { signal: controller.signal })

@@ -270,3 +270,23 @@ supports both development and local production preview without new CORS
 origins. Vitest uses one worker thread, jsdom and Testing Library; responsive
 checks are structural CSS checks, not pixel rendering. Real HTTP and built
 bundle DOM tests use existing local artifacts. See [Day 8 report](day8_report.md).
+
+## Day 9 reliability and CPU resource limits
+
+The API hook accepts a null path to pause invalid filter queries, aborts obsolete
+requests and handles null/non-JSON error envelopes. A manual connection retry
+avoids polling and permits recovery after a backend restart. Contracts and
+dataset/model outputs remain unchanged.
+
+The Windows backend launcher initializes native CPU pools to one thread before
+loading scientific libraries. This reduces measured private allocation while
+preserving the existing one-thread inference contract. Settings are process-only.
+Day 9 validation reconciles projected source fields, benchmarks warmed HTTP calls,
+measures the full own-process tree (including Windows venv redirectors), counts
+compiled UI requests and tests unavailable-backend behavior. Temporary children
+and their descendants are stopped explicitly. No ETL or production training runs.
+
+API/production-asset path and secret checks pass. Vite's development transform
+contains source filename metadata; it remains local-only. Visual browser testing
+is explicitly unverified because no connected browser was available. See the
+[Day 9 report](day9_report.md) for measurements, test totals and limitations.

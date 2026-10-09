@@ -202,12 +202,14 @@ export function Trends({
     [end, setEnd] = useState("");
   const invalid = !!(start && end && start > end);
   const data = useApi<Page<Trend>>(
-    query("/trends/" + period, {
-      limit: 100,
-      offset,
-      start_date: invalid ? undefined : start,
-      end_date: invalid ? undefined : end,
-    }),
+    invalid
+      ? null
+      : query("/trends/" + period, {
+          limit: 100,
+          offset,
+          start_date: invalid ? undefined : start,
+          end_date: invalid ? undefined : end,
+        }),
   );
   const rows = (data.data?.items ?? []).map((row) => ({
     date: row.trip_start_reference_month ?? row.trip_start_reference_day,

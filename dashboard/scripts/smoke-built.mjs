@@ -42,11 +42,23 @@ globalThis.ResizeObserver = class {
   disconnect() {}
 };
 const nativeFetch = globalThis.fetch;
-globalThis.fetch = (input, options) =>
-  nativeFetch(
-    typeof input === "string" ? new URL(input, base) : input,
-    options,
-  );
+const requests = [];
+globalThis.fetch = async (input, options) => {
+  const url = typeof input === "string" ? new URL(input, base) : input;
+  const record = {
+    path:
+      typeof input === "string" ? url.pathname + url.search : "Request object",
+    method: options?.method ?? "GET",
+    aborted: false,
+  };
+  requests.push(record);
+  try {
+    return await nativeFetch(url, options);
+  } catch (error) {
+    record.aborted = error.name === "AbortError";
+    throw error;
+  }
+};
 const root = dom.window.document.getElementById("root");
 const failures = [];
 dom.window.addEventListener("error", (event) => failures.push(event.message));
@@ -73,69 +85,113 @@ function click(text) {
     new dom.window.MouseEvent("click", { bubbles: true, button: 0 }),
   );
 }
-await wait(
-  () => root.textContent.includes("22,434,106"),
-  "real overview observations",
-);
-click("Driving analytics");
-await wait(
-  () => root.querySelectorAll("tbody tr").length >= 25,
-  "bounded real trip table",
-);
-click("Data quality");
-await wait(
-  () =>
-    root.textContent.includes("22,436,808") &&
-    root.textContent.includes("2,702"),
-  "pipeline reconciliation",
-);
-click("ML intelligence");
-await wait(
-  () =>
-    root.textContent.includes("10.89") &&
-    root.textContent.includes("No EV is represented in test."),
-  "actual model metrics",
-);
-click("Prediction lab");
-await wait(
-  () => root.querySelectorAll("form input").length === 31,
-  "31 prepared fields",
-);
-click("Load verified example");
-await wait(
-  () => root.querySelector("#past_speed_last_kmh").value !== "",
-  "example populated",
-);
-const form = root.querySelector("form");
-form.dispatchEvent(
-  new dom.window.Event("submit", { bubbles: true, cancelable: true }),
-);
-await wait(
-  () =>
-    root.textContent.includes("36.62") &&
-    root.textContent.includes("hgb-day6-ea8d587632fa"),
-  "real saved-model inference",
-);
-click("Reset");
-await wait(
-  () =>
-    !root.querySelector(".prediction-result") &&
-    root.querySelector("#past_speed_last_kmh").value === "",
-  "reset clears stale prediction",
-);
-if (failures.length) throw new Error(failures.join("; "));
-console.log(
-  JSON.stringify(
-    {
-      passed: true,
-      pages: 5,
-      real_prediction_kmh: 36.61748855856695,
-      prepared_inputs: 31,
-      runtime_seconds: (performance.now() - started) / 1000,
-      environment: "jsdom production-bundle integration; not visual browser QA",
-    },
-    null,
-    2,
-  ),
-);
+if (process.argv.includes("--unavailable")) {
+  const message =
+    "Local API is unavailable. Start the FleetPulse backend and retry.";
+  await wait(
+    () => root.textContent.includes(message),
+    "backend-unavailable overview",
+  );
+  for (const [page, title] of [
+    ["Driving analytics", "Patterns behind the journey."],
+    ["Data quality", "Quality you can trace."],
+    ["ML intelligence", "A forecast. With perspective."],
+    ["Prediction lab", "A prepared context. A measured forecast."],
+  ]) {
+    click(page);
+    await wait(
+      () =>
+        root.querySelector("h1")?.textContent === title &&
+        root.textContent.includes(message),
+      "backend-unavailable " + page,
+    );
+  }
+  if (
+    root.querySelectorAll("form input").length ||
+    root.querySelector(".prediction-result")
+  )
+    throw new Error(
+      "Unavailable API produced fabricated inference inputs/results",
+    );
+  console.log(
+    JSON.stringify(
+      {
+        passed: true,
+        pages: 5,
+        backend_unavailable: true,
+        environment: "jsdom production bundle; not browser verification",
+      },
+      null,
+      2,
+    ),
+  );
+} else {
+  await wait(
+    () => root.textContent.includes("22,434,106"),
+    "real overview observations",
+  );
+  click("Driving analytics");
+  await wait(
+    () => root.querySelectorAll("tbody tr").length >= 25,
+    "bounded real trip table",
+  );
+  click("Data quality");
+  await wait(
+    () =>
+      root.textContent.includes("22,436,808") &&
+      root.textContent.includes("2,702"),
+    "pipeline reconciliation",
+  );
+  click("ML intelligence");
+  await wait(
+    () =>
+      root.textContent.includes("10.89") &&
+      root.textContent.includes("No EV is represented in test."),
+    "actual model metrics",
+  );
+  click("Prediction lab");
+  await wait(
+    () => root.querySelectorAll("form input").length === 31,
+    "31 prepared fields",
+  );
+  click("Load verified example");
+  await wait(
+    () => root.querySelector("#past_speed_last_kmh").value !== "",
+    "example populated",
+  );
+  const form = root.querySelector("form");
+  form.dispatchEvent(
+    new dom.window.Event("submit", { bubbles: true, cancelable: true }),
+  );
+  await wait(
+    () =>
+      root.textContent.includes("36.62") &&
+      root.textContent.includes("hgb-day6-ea8d587632fa"),
+    "real saved-model inference",
+  );
+  click("Reset");
+  await wait(
+    () =>
+      !root.querySelector(".prediction-result") &&
+      root.querySelector("#past_speed_last_kmh").value === "",
+    "reset clears stale prediction",
+  );
+  if (failures.length) throw new Error(failures.join("; "));
+  console.log(
+    JSON.stringify(
+      {
+        passed: true,
+        pages: 5,
+        real_prediction_kmh: 36.61748855856695,
+        prepared_inputs: 31,
+        runtime_seconds: (performance.now() - started) / 1000,
+        environment:
+          "jsdom production-bundle integration; not visual browser QA",
+        api_requests: requests.filter((r) => r.path.startsWith("/api/v1")),
+      },
+      null,
+      2,
+    ),
+  );
+}
 dom.window.close();
