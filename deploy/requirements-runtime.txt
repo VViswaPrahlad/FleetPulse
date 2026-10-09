@@ -1,0 +1,13 @@
+# Serving only: Python 3.12.10; same numerical versions as the saved model.
+fastapi==0.115.12
+starlette==0.46.2
+pydantic==2.11.7
+uvicorn==0.34.3
+duckdb==1.4.4
+pyarrow==20.0.0
+pandas==2.2.3
+numpy==2.5.3
+scikit-learn==1.7.2
+scipy==1.17.1
+joblib==1.5.3
+threadpoolctl==3.6.0

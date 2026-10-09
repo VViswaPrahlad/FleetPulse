@@ -6,9 +6,9 @@ import numpy as np
 import sklearn
 from threadpoolctl import threadpool_limits
 
-from src.analytics.build_gold import local,sha256
+from src.runtime import ROOT,local,sha256
 from src.features.speed_windows import FEATURES
-from src.ml.train_speed import MODEL_PATH
+MODEL_PATH = ROOT / 'models/day6/hist_gradient_boosting.joblib'
 
 
 def load_model(path=MODEL_PATH):

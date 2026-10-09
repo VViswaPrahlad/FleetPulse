@@ -1,7 +1,6 @@
 // Execute the production bundle against real loopback API responses in jsdom.
 // This checks browser-facing code paths, not pixels or a real browser engine.
 import { JSDOM } from "jsdom";
-import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { performance } from "node:perf_hooks";
@@ -43,17 +42,33 @@ globalThis.ResizeObserver = class {
 };
 const nativeFetch = globalThis.fetch;
 const requests = [];
+// Explicit test-only HTTPS origin remapping: never contacts the public placeholder.
+const publicOrigin = process.env.FLEETPULSE_SMOKE_PUBLIC_ORIGIN;
+const loopbackApi = process.env.FLEETPULSE_SMOKE_API_URL;
+if (publicOrigin || loopbackApi) {
+  if (
+    !publicOrigin ||
+    !loopbackApi ||
+    new URL(loopbackApi).hostname !== "127.0.0.1"
+  )
+    throw new Error("Explicit loopback API and public test origin required");
+}
 globalThis.fetch = async (input, options) => {
   const url = typeof input === "string" ? new URL(input, base) : input;
   const record = {
     path:
       typeof input === "string" ? url.pathname + url.search : "Request object",
     method: options?.method ?? "GET",
+    origin: typeof input === "string" ? url.origin : "Request object",
     aborted: false,
   };
   requests.push(record);
   try {
-    return await nativeFetch(url, options);
+    const destination =
+      publicOrigin && url.origin === publicOrigin
+        ? new URL(url.pathname + url.search, loopbackApi)
+        : url;
+    return await nativeFetch(destination, options);
   } catch (error) {
     record.aborted = error.name === "AbortError";
     throw error;
@@ -62,10 +77,8 @@ globalThis.fetch = async (input, options) => {
 const root = dom.window.document.getElementById("root");
 const failures = [];
 dom.window.addEventListener("error", (event) => failures.push(event.message));
-const assets = resolve("dist/assets");
-const entry = (await readdir(assets)).find((file) =>
-  /^index-.*\.js$/.test(file),
-);
+const assets = resolve(process.env.FLEETPULSE_SMOKE_DIST ?? "dist", "assets");
+const entry = html.match(/src="\/assets\/(index-[^"/]+\.js)"/)?.[1];
 if (!entry) throw new Error("Production entry missing");
 await import(pathToFileURL(resolve(assets, entry)).href);
 async function wait(condition, label) {
@@ -86,8 +99,9 @@ function click(text) {
   );
 }
 if (process.argv.includes("--unavailable")) {
-  const message =
-    "Local API is unavailable. Start the FleetPulse backend and retry.";
+  const message = publicOrigin
+    ? "The API may be unavailable or waking from sleep. Wait about a minute and retry."
+    : "Local API is unavailable. Start the FleetPulse backend and retry.";
   await wait(
     () => root.textContent.includes(message),
     "backend-unavailable overview",

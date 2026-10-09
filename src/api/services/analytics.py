@@ -83,7 +83,7 @@ class AnalyticsService:
             # persistent database, native Spark IO, or write statement is exposed.
             temp=self.settings.root/'data/tmp/duckdb-api'
             temp.mkdir(parents=True,exist_ok=True)
-            with duckdb.connect(config={'threads':1,'memory_limit':'128MB',
+            with duckdb.connect(config={'threads':1,'memory_limit':f'{self.settings.analytics_memory_mb}MB',
                 'temp_directory':str(temp),'max_temp_directory_size':'32MB',
                 'autoinstall_known_extensions':False,'autoload_known_extensions':False}) as con:
                 path=str(self._path(table))

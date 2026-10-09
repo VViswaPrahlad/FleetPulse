@@ -146,3 +146,7 @@ This is a local portfolio application without authentication, TLS, public deploy
 Future work could investigate external-region/vehicle validation, low/high-speed behavior, causal raw-telemetry preparation and deployment controls. None is implemented in this release.
 
 For interviews: [3–5 minute demo and engineering decisions](docs/demo_guide.md), [questions and answers](docs/interview_qa.md), and [approved ML problem definition](docs/ml_problem_definition.md).
+
+## Optional public portfolio deployment — prepared, not deployed
+
+[Render deployment guide](docs/deployment_guide.md) provides a serving-only artifact bundle, runtime lock, Free Web Service/Static Site settings, strict public CORS and a public API build URL. The original local workflow stays unchanged. No data/model upload, deployment or live-URL success is claimed; artifact publication and live/browser acceptance remain separate manual steps.

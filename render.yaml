@@ -1,0 +1,37 @@
+# PREPARATION ONLY. Creating this Blueprint deploys; do not apply without approval.
+services:
+  - type: web
+    name: fleetpulse-api
+    runtime: python
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: python -m pip install --only-binary=:all: -r deploy/requirements-runtime.lock && python deploy/fetch_bundle.py
+    startCommand: python deploy/start.py
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: FLEETPULSE_FRONTEND_ORIGIN
+        sync: false
+      - key: FLEETPULSE_BUNDLE_URL
+        sync: false
+      - key: FLEETPULSE_BUNDLE_SHA256
+        sync: false
+  - type: web
+    name: fleetpulse-dashboard
+    runtime: static
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: node deploy/build_frontend.mjs
+    staticPublishPath: dashboard/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 24.7.0
+      - key: VITE_API_URL
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

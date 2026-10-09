@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from src.analytics.build_gold import ROOT
+from src.runtime import ROOT
 
 
 @dataclass(frozen=True)
@@ -10,12 +10,15 @@ class Settings:
     cache_entries: int = 32
     max_body_bytes: int = 65_536
     cors_origins: tuple[str,...] = ('http://localhost:5173','http://127.0.0.1:5173')
+    analytics_memory_mb: int = 128
 
     def __post_init__(self):
         root=Path(self.root).resolve()
         if not root.is_relative_to(ROOT):
             raise ValueError('API resources must stay inside FleetPulse')
         object.__setattr__(self,'root',root)
+        if not 16 <= self.analytics_memory_mb <= 128:
+            raise ValueError('Analytics memory budget must be 16..128 MB')
 
     @property
     def gold(self):

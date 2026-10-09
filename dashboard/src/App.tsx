@@ -13,7 +13,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useApi } from "./api";
+import { IS_PUBLIC_API, useApi } from "./api";
 import {
   Overview,
   Driving,
@@ -87,7 +87,9 @@ function Layout() {
             <p>
               Historical vehicle telemetry.
               <br />
-              Local analytics & inference.
+              {IS_PUBLIC_API
+                ? "Historical analytics & inference."
+                : "Local analytics & inference."}
             </p>
             <a
               href="https://github.com/gsoh/VED"
@@ -100,7 +102,9 @@ function Layout() {
           </div>
           <div className="workspace-status">
             <span className="status-dot" />
-            Local portfolio workspace
+            {IS_PUBLIC_API
+              ? "Read-only portfolio demo"
+              : "Local portfolio workspace"}
           </div>
         </div>
       </aside>
@@ -132,7 +136,9 @@ function Layout() {
               ? "Connecting to API"
               : health.error
                 ? "API unavailable"
-                : "Local API connected"}
+                : IS_PUBLIC_API
+                  ? "API connected"
+                  : "Local API connected"}
             {health.error && (
               <button
                 type="button"

@@ -1,5 +1,25 @@
 import { useEffect, useState } from "react";
 
+export function apiBase(value?: string): string {
+  if (!value) return "/api/v1";
+  const url = new URL(value);
+  if (
+    url.protocol !== "https:" ||
+    url.hostname.includes("*") ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    !["", "/"].includes(url.pathname)
+  )
+    throw new Error("VITE_API_URL must be an HTTPS origin without a path");
+  return url.origin + "/api/v1";
+}
+const API_BASE = apiBase(import.meta.env.VITE_API_URL);
+export const IS_PUBLIC_API = API_BASE.startsWith("https://");
+const PUBLIC_UNAVAILABLE =
+  "The API may be unavailable or waking from sleep. Wait about a minute and retry.";
+
 export type Page<T> = {
   items: T[];
   total: number;
@@ -142,11 +162,13 @@ export async function request<T>(
 ): Promise<T> {
   let response: Response;
   try {
-    response = await fetch("/api/v1" + path, options);
+    response = await fetch(API_BASE + path, options);
   } catch (e) {
     if ((e as Error).name === "AbortError") throw e;
     throw new ApiError(
-      "Cannot reach the local API. Start the FleetPulse backend and retry.",
+      IS_PUBLIC_API
+        ? PUBLIC_UNAVAILABLE
+        : "Cannot reach the local API. Start the FleetPulse backend and retry.",
     );
   }
   let body: unknown;
@@ -155,10 +177,16 @@ export async function request<T>(
   } catch {
     if (!response.ok && response.status >= 500) {
       throw new ApiError(
-        "Local API is unavailable. Start the FleetPulse backend and retry.",
+        IS_PUBLIC_API
+          ? PUBLIC_UNAVAILABLE
+          : "Local API is unavailable. Start the FleetPulse backend and retry.",
       );
     }
-    throw new ApiError("The API returned an unreadable response.");
+    throw new ApiError(
+      IS_PUBLIC_API
+        ? PUBLIC_UNAVAILABLE
+        : "The API returned an unreadable response.",
+    );
   }
   if (!response.ok) {
     const error = (
