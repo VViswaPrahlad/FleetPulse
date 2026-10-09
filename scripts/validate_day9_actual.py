@@ -118,7 +118,7 @@ def memory_tree(root_pid):
         for key in ('working_set_bytes','private_bytes')}}
 
 
-def validate(serve=False):
+def validate(serve=False, api_port=8000, web_port=5173):
     started=time.perf_counter(); RESULTS.mkdir(parents=True,exist_ok=True)
     before=protected(); save_json(RESULTS/'protected_before.json',before)
     example=json.loads((ROOT/'docs/examples/day7_prediction_request.json').read_text())
@@ -197,22 +197,22 @@ def validate(serve=False):
     save_json(RESULTS/'contracts.json',contracts)
     children=[]; logs=[]; spawn=[]
     env={**os.environ,'PYTHONPATH':str(ROOT),'TEMP':str(ROOT/'data/tmp'),'TMP':str(ROOT/'data/tmp'),
-         'FLEETPULSE_API_PORT':'8000','OMP_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1',
+         'FLEETPULSE_API_PORT':str(api_port),'OMP_NUM_THREADS':'1','OPENBLAS_NUM_THREADS':'1',
          'MKL_NUM_THREADS':'1','NUMEXPR_NUM_THREADS':'1'}
-    for port in (8000,5173):
+    for port in (api_port,web_port):
         with socket.socket() as sock:
             try: sock.bind(('127.0.0.1',port))
             except OSError: raise RuntimeError(f'Port {port} already in use; no unrelated process stopped') from None
     try:
         commands=[('backend',[sys.executable,'-m','uvicorn','src.api.main:app','--host','127.0.0.1',
-            '--port','8000','--workers','1','--limit-concurrency','32','--timeout-keep-alive','5','--no-access-log'],ROOT),
-            ('frontend',[shutil.which('node'),'node_modules/vite/bin/vite.js','--host','127.0.0.1','--port','5173'],ROOT/'dashboard')]
+            '--port',str(api_port),'--workers','1','--limit-concurrency','32','--timeout-keep-alive','5','--no-access-log'],ROOT),
+            ('frontend',[shutil.which('node'),'node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',str(web_port)],ROOT/'dashboard')]
         for name,command,cwd in commands:
             log=(RESULTS/f'{name}.log').open('w',encoding='utf-8'); logs.append(log); spawn.append(time.perf_counter())
             children.append(subprocess.Popen(command,cwd=cwd,env=env,stdout=log,stderr=subprocess.STDOUT,
                 creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0)))
-        with (httpx.Client(base_url='http://127.0.0.1:8000',trust_env=False,timeout=20) as api,
-              httpx.Client(base_url='http://127.0.0.1:5173',trust_env=False,timeout=20) as web):
+        with (httpx.Client(base_url=f'http://127.0.0.1:{api_port}',trust_env=False,timeout=20) as api,
+              httpx.Client(base_url=f'http://127.0.0.1:{web_port}',trust_env=False,timeout=20) as web):
             wait(api,children[0]); api_start=time.perf_counter()-spawn[0]
             wait(web,children[1],'/'); web_start=time.perf_counter()-spawn[1]
             for path in paths:
@@ -243,7 +243,7 @@ def validate(serve=False):
             timings['/ml/predict']={'samples':30,'median_ms':statistics.median(samples),'p95_ms':sorted(samples)[28],
                 'max_ms':max(samples),'response_bytes':len(response.content)}
             memory_after=memory_tree(children[0].pid); frontend_memory=memory_tree(children[1].pid)
-        smoke=subprocess.run([shutil.which('node'),'scripts/smoke-built.mjs','http://127.0.0.1:5173'],
+        smoke=subprocess.run([shutil.which('node'),'scripts/smoke-built.mjs',f'http://127.0.0.1:{web_port}'],
             cwd=ROOT/'dashboard',env=env,capture_output=True,text=True,timeout=90,
             creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         (RESULTS/'production_dom.log').write_text(smoke.stdout+smoke.stderr,encoding='utf-8')
@@ -252,12 +252,12 @@ def validate(serve=False):
         assert dom_result['pages']==5 and dom_result['prepared_inputs']==31
         assert len(dom_result['api_requests'])==13,'Unexpected production navigation request count'
         stop_child(children[0])
-        with httpx.Client(base_url='http://127.0.0.1:5173',trust_env=False,timeout=10) as web:
+        with httpx.Client(base_url=f'http://127.0.0.1:{web_port}',trust_env=False,timeout=10) as web:
             unavailable_response=web.get('/api/v1/health')
             assert unavailable_response.status_code>=500
             assert_safe(unavailable_response)
         unavailable_dom=subprocess.run([shutil.which('node'),'scripts/smoke-built.mjs',
-            'http://127.0.0.1:5173','--unavailable'],cwd=ROOT/'dashboard',env=env,
+            f'http://127.0.0.1:{web_port}','--unavailable'],cwd=ROOT/'dashboard',env=env,
             capture_output=True,text=True,timeout=60,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
         (RESULTS/'unavailable_dom.log').write_text(unavailable_dom.stdout+unavailable_dom.stderr,encoding='utf-8')
         assert unavailable_dom.returncode==0,'Backend-unavailable UI verification failed'

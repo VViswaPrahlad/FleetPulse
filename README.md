@@ -1,293 +1,148 @@
-# FleetPulse
+﻿# FleetPulse
 
-FleetPulse is a local vehicle telemetry project. The approved primary source
-is the [Vehicle Energy Dataset (VED)](https://github.com/gsoh/VED).
+**Vehicle telemetry → auditable analytics → leakage-safe forecasting → FastAPI and React.**
 
-**Day 7 backend:** FastAPI exposes 15 versioned analytics, readiness and model
-routes. Prediction requires the exact 31-field prepared past-only feature vector;
-raw telemetry and incomplete vectors are rejected. The saved model and all
-earlier data/evaluations are reused without modification. The approved frontend
-architecture is React + TypeScript, planned for a later day; no frontend is
-implemented now. See [REST contracts](docs/api_contract.md) and [Day 7 report](docs/day7_report.md).
+FleetPulse is a full-stack Data Engineering + ML portfolio project using genuine vehicle telemetry. It investigates whether the previous minute of driving can predict mean speed over the next minute, and exposes fleet analytics, measurement quality and model evaluation through a local dashboard.
 
-**Day 6 is complete:** a validation-selected HistGradientBoostingRegressor
-achieves test MAE **10.887 km/h** and RMSE **14.091 km/h**, versus last-speed
-baseline **14.056 / 18.803** on the identical held-out examples. Pooled MAE
-improves 22.55%; 34 of 50 test vehicles improve, while 16 worsen. The macro
-vehicle improvement interval crosses zero, and no EV is represented in test.
-See [the measured Day 6 report](docs/day6_report.md) and its diagnostic figures.
+The project reconciles **22,436,808 observations**, **384 vehicles** and **32,552 trips**. It demonstrates a reproducible chain from source records to held-out vehicle evaluation, without claiming fleet-wide production readiness.
 
-**Day 5 is complete:** the Silver audit reproduces all 34,348 eligible speed
-windows across 318 vehicles. The ML dataset retains 11,549 examples whose
-complete contexts share no observations. Vehicle-held-out splits contain
-223 training, 45 validation and 50 test vehicles. Three fixed baselines are
-evaluated; no advanced model is trained. See [Day 5 report](docs/day5_report.md).
+**Release status:** automated validation passes; desktop/mobile visual sign-off remains pending because available browser tools cannot open a browser. No dashboard screenshots or visual-verification claims are fabricated. Follow the [manual browser checklist](docs/demo_guide.md#manual-browser-sign-off).
 
-**Day 4 is complete:** seven reproducible Gold Parquet tables, local DuckDB
-SQL demos, and 18 passing tests. All 22,434,106 Silver observations reconcile;
-Bronze and Silver are unchanged. The approved ML target is next-60-second
-mean speed with causal inputs and vehicle-held-out evaluation. No model is
-trained. See [the measured Day 4 report](docs/day4_report.md).
+## Architecture and stack
 
-**Day 3 is complete:** 22,434,106 typed Silver rows and 2,702 quarantined
-negative-timestamp rows reconcile to all 22,436,808 Bronze observations.
-Bronze is unchanged. The original ICE/HEV fuel target has only one usable
-paired training window; the approved primary ML target is now next-60-second mean speed. See
-[the Day 3 quality and feasibility report](docs/day3_report.md).
-
-**Day 2 is complete:** 22,436,808 actual observations, 384
-vehicles and 32,552 vehicle/trip pairs are ingested into Bronze.
-All source rows reconcile. 11 fixture tests pass; a repeat
-invocation preserves all 54 output hashes. Full ingestion took
-525.23 seconds. Bronze occupies
-546,055,318 bytes. See [the measured Day 2 report](docs/day2_report.md)
-for fuel-rate missingness, cadence, duplicates, powertrain differences,
-dependency versions, storage and limitations.
-
-## Current architecture
-
-Official checksummed archives → bounded archive staging → explicit-schema
-PySpark parsing → PyArrow Parquet writer → `data/bronze/ved/`.
-Raw values, literal `NaN`, malformed records and duplicates are retained.
-Output contains 54 weekly files in 13 source-month directories.
-Existing Bronze now feeds reproducible PySpark type/quality processing and
-bounded PyArrow output to `data/silver/ved/` and `data/quarantine/ved/`.
-Every row has a Bronze file/index pointer. Missing sensors remain missing;
-DuckDB SQL now produces descriptive Gold analytics; no model is trained.
-See [architecture](docs/architecture.md) and [scope](docs/project_scope.md).
-
-## Run locally
-
-Use the existing Python 3.12 `.venv` and JDK 21. The launcher applies Java,
-Python-worker and project-local temporary-directory settings only to the
-current process. From the FleetPulse PowerShell terminal:
-
-```powershell
-.\scripts\run_day2.ps1 -Script scripts/spark_smoke.py
-.\scripts\run_day2.ps1 -Script scripts/complete_day2.py
-.\scripts\run_day2.ps1 -Script scripts/check_day2_reproducibility.py
+```mermaid
+flowchart LR
+    VED[Official VED archives] --> SP[PySpark ingestion + PyArrow IO]
+    SP --> B[Bronze Parquet]
+    B --> S[Silver + quality flags]
+    S --> G[Gold Parquet]
+    G --> D[DuckDB SQL]
+    D --> API[FastAPI /api/v1]
+    API --> UI[React + TypeScript]
+    S --> F[Past-only 60-second features]
+    F --> SPLIT[Vehicle-held-out splits]
+    SPLIT --> M[Saved HistGradientBoosting model]
+    M --> INFER[Prepared-vector inference]
+    INFER --> API
 ```
 
-`complete_day2.py` runs fixture tests, idempotent ingestion, then full-corpus
-inspection. Existing verified sources need no new downloads. For a fresh
-checkout, create `.venv` with `py -3.12 -m venv .venv`, install
-`requirements.txt`, then run `scripts/acquire_ved.py` through the launcher
-with authorized network access. It obtains only author-repository VED data,
-checks sizes/CRCs/disk/budget, and leaves extraction to bounded ingestion.
+[Architecture and measurement boundaries](docs/architecture.md) explain quarantine, training/evaluation isolation and artifact dependencies.
 
-## Windows IO and storage
+| Component | Technology |
+|---|---|
+| Ingestion / cleaning | Python 3.12, PySpark 4.0.3, JDK 21, PyArrow 20.0.0 |
+| Analytics | DuckDB 1.4.4, Parquet, reusable SQL |
+| Features / ML | Pandas, NumPy, scikit-learn 1.7.2 HistGradientBoostingRegressor |
+| Backend | FastAPI 0.115.12, Pydantic, Uvicorn |
+| Frontend | React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4, Recharts, Lucide |
+| Validation | Pytest, Vitest, Testing Library, real-artifact API/DOM checks |
 
-Python 3.12.10, Java 21.0.12.1, PySpark 4.0.3.
-The approved PyArrow writer and explicit-file Spark reader avoid unavailable
-Hadoop native Windows IO. Use `read_bronze()` in the ingestion module;
-direct `spark.read.parquet(directory)` and Spark's native writer are not
-validated on this machine.
+Exact dependencies are pinned in [requirements.txt](requirements.txt) and [package-lock.json](dashboard/package-lock.json). CPU execution is sufficient; the GPU is unused. No cloud infrastructure is required.
 
-The current maximum is **10,000,000,000 bytes**, with a preference for staying
-under **5,000,000,000 bytes**. For Bronze acquisition, one archive is staged at a
-time and reconciled generated CSVs are removed. The original 176,386,679-byte
-archives remain; their CSV expansion totals 3,203,555,729 bytes. Observed
-processing peak was 3,018,505,445 bytes. Raw data, Bronze, temporaries and results
-are ignored by Git. No source data or individual GPS trace is committed.
+## Dataset and engineering
 
-## Deferred scope
+Source: [Vehicle Energy Dataset (VED), author-maintained repository](https://github.com/gsoh/VED), by Geunseob Oh, David LeBlanc and Huei Peng. The author describes Ann Arbor telemetry collected in 2017–2018 and supplies an [Apache-2.0 dataset license](https://github.com/gsoh/VED/blob/master/LICENSE). Acquisition pins commit `6baa4963782d515a67d32a5490bd5d11f5d9bf0d`; hashes, archive CRCs and storage checks are recorded locally.
 
-The initial fuel-use forecasting proposal is documented in
-[the ML definition](docs/ml_problem_definition.md). Sparse direct fuel-rate
-coverage is now measured; no missing fuel signal is imputed on Day 2.
-Silver and feasibility analysis are complete. Day 4 adds Gold and DuckDB.
-Day 5 adds feature engineering and baselines; Day 6 adds local CPU model
-training/evaluation. Day 7 adds a local FastAPI backend. React implementation
-and cloud services remain deferred. Stop after Day 7.
+The source README reports 383 vehicles; the actual 54 CSVs contain **384 distinct IDs**. FleetPulse reports inspected file statistics rather than copying the README population count. Trip-relative millisecond timestamps, irregular sampling and structural sensor missingness are explicit constraints. GPS exists in the source but is not used to invent live vehicle locations or forecasting features.
 
-## Repeat Day 3 using validated caches
+| Layer | Measured result and purpose |
+|---|---|
+| Bronze | 22,436,808 rows; original tokens, provenance and malformed-record indicators |
+| Silver | 22,434,106 retained + 2,702 quarantined rows; typed measurements and quality flags |
+| Gold | Fleet overview (1), vehicles (384), trips (32,552), daily cohorts (375), monthly cohorts (13), powertrains (4), quality metrics (5) |
 
-The existing launcher only sets process-local Java/Python/temporary paths;
-its filename does not cause Day 2 work to rerun.
+Silver quarantines negative elapsed timestamps and preserves missingness without sensor imputation. SOC precision overshoot `(100,100.001]` becomes 100 with a flag and original value retained; other out-of-range SOC becomes unavailable. Legitimately signed current/temperature remain signed. See [Day 3 rules and feasibility](docs/day3_report.md).
 
-```powershell
-.\scripts\run_day2.ps1 -Script src/processing/silver_ved.py
-.\scripts\run_day2.ps1 -Script scripts/check_day3_repeat.py
-```
+Gold distance is a **partial observed-segment estimate** from speed integration over eligible gaps ≤2 seconds, not odometer or complete trip mileage. Daily/monthly summaries group whole trips by dataset-reference trip-start date; the source timezone is unspecified. [SQL examples](sql/README.md) expose these assumptions.
 
-`scripts/complete_day3.py` runs the 20 Day 3 fixture tests before Silver.
-Silver uses the measured feasibility checkpoint and verified Bronze hashes;
-it never downloads or re-ingests sources. The current storage cap is 10 GB,
-with a preference for remaining under 5 GB. The user approved the speed target on Day 4.
+Fuel forecasting was rejected before training: **96.0061%** of Bronze fuel-rate readings are missing. The original ICE/HEV population supports only **one vehicle, one trip and one paired forecasting window** under the gap policy. Vehicle-held-out evaluation would be impossible. The approved target is speed; missing fuel and proxy consumption are never fabricated.
 
-## Day 4 Gold and local SQL
+## ML methodology and results
 
-The approved target is next-60-second time-weighted mean speed in km/h, with
-past-only inputs and vehicle-held-out evaluation. Fuel forecasting was rejected
-because the original ICE/HEV cohort supports just one usable vehicle/window.
-See [ML definition](docs/ml_problem_definition.md) and [Day 4 report](docs/day4_report.md).
+At observed prediction time **t**, use `[t−60s,t]` to predict the time-weighted mean measured speed in `[t,t+60s]`, in km/h. Exact observed endpoints and gaps ≤2 seconds are required. The shared boundary at t is known at prediction time; all later telemetry belongs exclusively to the label.
 
-```powershell
-.\.venv\Scripts\python.exe -m src.analytics.build_gold
-.\.venv\Scripts\python.exe -m src.analytics.query fleet_overview
-.\.venv\Scripts\python.exe -m src.analytics.query powertrain_comparison
-.\.venv\Scripts\python.exe -m pytest tests/test_day4_gold.py -q --basetemp=data/tmp/pytest-day4
-```
+- Silver reproduces 34,348 eligible candidates across 318 vehicles. Strict selection produces **11,549 examples** without reusing observations between complete 120-second contexts within a trip.
+- **31 past-only features** describe speed, acceleration, stops, sampling and available sensor means/coverage. IDs, GPS, absolute dates, future coverage and whole-trip Gold statistics are excluded.
+- Frozen deterministic vehicle splits contain **7,509 examples / 223 represented vehicles** in training, **2,121 / 45** in validation and **1,919 / 50** in test. No vehicle crosses splits.
+- Six fixed configurations are compared on validation only. The final model remains training-only with native NaN handling, no imputation/scaling and no random-row early stopping. Test results do not select features or hyperparameters.
 
-DuckDB 1.4.4 reads existing Silver locally; PyArrow 20.0.0 writes seven Gold
-tables under `data/gold/ved/`. No Java process is needed for these SQL jobs.
-The builder verifies input/output/config hashes and reconciles aggregates
-against Silver. SQL lives in [sql/](sql/README.md). Trip-start day/month cohorts
-use the author's reference date with unspecified timezone. Distance covers
-measured adjacent speed intervals <=2 seconds; gaps and missing endpoints
-are excluded from integration, never from observation counts. Whole-trip
-Gold summaries are descriptive and cannot become causal forecasting features.
+| Method | Validation MAE | Validation RMSE | Test MAE | Test RMSE |
+|---|---:|---:|---:|---:|
+| Last-observed speed | 13.702 | 18.220 | 14.056 | 18.803 |
+| Past-mean persistence | 14.632 | 19.893 | 14.187 | 19.245 |
+| Training historical mean | 17.391 | 24.349 | 17.815 | 23.724 |
+| HistGradientBoosting | **10.438** | **13.678** | **10.887** | **14.091** |
 
-## Day 5 causal features and baselines
+Errors are **km/h**, evaluated on identical examples. Test pooled MAE improves **22.55%** and RMSE **25.06%** relative to last-observed speed. With 2,000 fixed-seed vehicle-cluster bootstrap replicates, test MAE's 95% interval is **10.188–11.905 km/h** and RMSE's is **13.194–15.304 km/h**.
+
+Improvement is not universal: **16 of 50 test vehicles worsen**, low/high-speed cohorts worsen, and paired vehicle-macro MAE improvement's interval crosses zero. **EVs are absent from the test set.** These are conditional aggregate intervals, not individual-prediction intervals. [Day 6 evaluation](docs/day6_report.md) includes macro errors, cohort analysis and validation-only importance.
+
+![Held-out predicted versus actual speed](docs/figures/day6/predicted_vs_actual.png)
+
+## Run locally on Windows
+
+Use Python 3.12 and Node.js 24 for the validated environment. JDK 21 is needed for Spark/reconstruction and the complete fixture suite, **not** API/dashboard startup. [Fresh-machine instructions](docs/demo_guide.md#fresh-windows-setup) include official installer links and process-only Java configuration.
 
 ```powershell
-.\.venv\Scripts\python.exe -m src.features.build_speed_dataset
-.\scripts\run_day2.ps1 -Script scripts/complete_day5.py
-.\scripts\run_day2.ps1 -Script scripts/validate_day5_actual.py
-.\.venv\Scripts\python.exe -m pytest tests/test_day5_features.py -q --basetemp=data/tmp/pytest-day5
-```
-
-The first command creates or verifies cached `data/ml/speed/train.parquet`,
-`validation.parquet` and `test.parquet`. It reads existing Silver; Bronze,
-Silver and Gold remain unchanged. No Spark job or Java process is needed by
-feature code; the existing launcher is an optional process-settings convenience.
-`scripts/complete_day5.py --verify-fresh` explicitly verifies a fresh repeat;
-ordinary repeat invocations use hashes instead of processing telemetry again.
-
-The feature allowlist is `src.features.speed_windows.FEATURES` (31 numeric
-columns). All predictive inputs use only [t-60s,t]; target mean speed integrates
-observed endpoints over [t,t+60s]. Vehicle/trip IDs, absolute timestamps, source
-pointers, split labels and targets are audit metadata and must not be passed
-to a model. Optional sensor means retain NULL when absent; no sensor is filled.
-Missingness fractions are past-only. The SHA-256-ranked vehicle assignment is
-frozen before window generation. Strict greedy selection prevents any source
-observation from being shared between retained contexts in a trip.
-
-Split assignments, per-trip coverage audit, train-only historical constant,
-baseline metrics and reproducibility metadata live under ignored `results/day5/`.
-Only implementation, tests and measured text reports are committed to GitHub;
-ML-ready Parquet and generated metrics remain local. These are the Day 5 outputs
-that Day 6 reuses without modification.
-
-## Day 6 CPU model and honest evaluation
-
-```powershell
-.\.venv\Scripts\python.exe -m src.ml.train_speed
-.\scripts\run_day2.ps1 -Script scripts/finalize_day6_statistics.py
-.\scripts\run_day2.ps1 -Script scripts/validate_day6_actual.py
-.\scripts\run_day2.ps1 -Script scripts/plot_day6.py
-.\.venv\Scripts\python.exe -m pytest tests/test_day6_ml.py -q --basetemp=data/tmp/pytest-day6
-```
-
-Six fixed configurations fit training vehicles only; pooled validation MAE
-selects one. No internal row-level early stopping or validation/test refit is
-used. Native NaN handling preserves missing sensor features. Feature importance
-uses validation only; all 31 features are retained. Test diagnostics and paired
-vehicle-cluster intervals use the frozen selected model and unchanged examples.
-
-The local model is `models/day6/hist_gradient_boosting.joblib`, with adjacent
-inference metadata. `src.ml.inference.load_model()` checks integrity and version;
-`predict_features()` accepts exactly the 31 approved columns, never IDs or target.
-Only load trusted locally generated Joblib artifacts. Models, datasets and
-`results/day6/` remain ignored. Three lightweight PNG figures are checked in
-under `docs/figures/day6/`. This records the Day 6 model that Day 7 serves unchanged.
-
-## Day 7 local REST backend
-
-```powershell
-.\scripts\run_backend.ps1
-# In another project terminal:
-Invoke-RestMethod http://127.0.0.1:8000/api/v1/ready
-Invoke-RestMethod http://127.0.0.1:8000/api/v1/vehicles?limit=5
-$taskBody = Get-Content -LiteralPath docs/examples/day7_prediction_request.json -Raw
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/ml/predict -ContentType application/json -Body $taskBody
-```
-
-OpenAPI is at `http://127.0.0.1:8000/openapi.json`; interactive API documentation
-is at `/docs`. Use `-Reload` for code reload restricted to `src/api/`. Routes
-cover Gold fleet/vehicle/trip/trend/powertrain/quality analytics and Day 6 model
-metrics, per-vehicle errors, feature schema and one-vector prediction.
-List responses have bounded pagination/filtering; missing dependencies return
-safe 503 responses. No telemetry is processed or model trained on startup.
-Analytics cache is bounded; native model missing-value handling and exact
-feature order are preserved. CORS allows only local React development port 5173.
-
-The demo is loopback-only and unauthenticated. Provide existing local Gold,
-model and evaluation artifacts; they are intentionally absent from GitHub.
-A fresh checkout without artifacts can serve health/docs but reports not ready.
-No Streamlit, React, dashboard or Day 8 implementation is added on Day 7.
-
-## Day 8 React dashboard
-
-The approved React + TypeScript frontend is in `dashboard/`. It uses Vite,
-Tailwind CSS, Recharts and Lucide, with five routes: Fleet Overview, Driving
-Analytics, Data Quality, ML Intelligence and Prediction Lab. Every displayed
-metric comes from the local `/api/v1` API. Filters, bounded pagination,
-loading/empty/error states and a mobile sidebar are implemented.
-
-```powershell
-# From FleetPulse, first installation only (Node 24 recommended):
-$env:npm_config_cache = Join-Path (Get-Location) 'data/tmp/npm-day8'
+git clone https://github.com/VViswaPrahlad/FleetPulse.git
+Set-Location FleetPulse
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+$env:npm_config_cache = Join-Path (Get-Location) 'data/tmp/npm-cache'
 npm.cmd ci --prefix dashboard
-# Terminal 1:
+```
+
+With existing local artifacts, use **two PowerShell terminals** at the project root:
+
+```powershell
+# Terminal 1
 .\scripts\run_backend.ps1
-# Terminal 2:
+```
+
+```powershell
+# Terminal 2
 .\scripts\run_frontend.ps1
-# Open http://127.0.0.1:5173
 ```
 
-Both servers bind loopback. Vite proxies `/api` to the existing backend; use
-`-BackendPort` to change the process-local proxy port. Production preview:
-`npm.cmd --prefix dashboard run build`, then
-`.\scripts\run_frontend.ps1 -Preview -Port 4173`. Preview is a local validation
-server, not a deployment. No ETL, training, cloud service or dashboard dataset
-copy is needed. Existing local artifacts are required; missing dependencies
-appear as explicit error states rather than fabricated values.
+Open `http://127.0.0.1:5173`; API documentation is `http://127.0.0.1:8000/docs`. The backend binds loopback, uses one worker and sets native CPU limits only in its terminal process. Do not bypass execution-policy/security restrictions if scripts are blocked.
 
-Prediction Lab accepts exactly the API's 31 prepared past-only features.
-Raw GPS is insufficient. Six optional sensor means can be null only with
-zero measured availability; the backend validates statistical coherence.
-The opt-in example is the anonymous, actual Day 7 prepared vector, not synthetic
-telemetry. The API cannot certify caller-supplied feature provenance.
+**Git contains source, tests, SQL, documentation, lockfiles and lightweight figures.** It excludes VED archives, CSV/Parquet outputs, result manifests, environments and trained model binaries. A source-only checkout can build the frontend, serve API docs/health and test fixtures; real analytics/readiness/predictions require locally generated artifacts. Missing artifacts produce honest unavailable states, never demo metrics. See [ordered artifact reconstruction](docs/demo_guide.md#artifact-reconstruction-source-only-checkout).
+
+## API and prediction contract
+
+Versioned routes expose fleet/vehicle/trip analytics, bounded date cohorts, powertrains, quality, model/baseline metrics and vehicle errors. Tables default to 25 rows and cap requests at 100; the browser never receives millions of observations. [Endpoint contracts](docs/api_contract.md) document filters, units, errors and CORS.
+
+`POST /api/v1/ml/predict` requires the **exact 31 prepared past-only features** with schema/unit metadata. Raw GPS or incomplete raw telemetry is insufficient. Optional sensor means may be null only with coherent coverage; unexpected fields and invalid sampling histories are rejected. Model hash, feature order and library versions are checked without retraining.
 
 ```powershell
-npm.cmd --prefix dashboard run typecheck
+$request = Get-Content docs/examples/day7_prediction_request.json -Raw
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/ml/predict `
+    -ContentType 'application/json' -Body $request
+```
+
+The saved Day 6 model predicts **36.61748855856695 km/h** for this anonymous measured vector. The API validates consistency but cannot independently prove the historical provenance of a caller's prepared features.
+
+## Tests and verification
+
+```powershell
+# Substitute your actual JDK folder; settings apply only to this process.
+.\scripts\run_day2.ps1 -JavaHome 'C:\path\to\jdk-21' -Script '-m' pytest `
+    -q --basetemp=data/tmp/pytest-release
 npm.cmd --prefix dashboard test
+npm.cmd --prefix dashboard run typecheck
 npm.cmd --prefix dashboard run build
-.\.venv\Scripts\python.exe -m pytest tests/test_day8_reports.py tests/test_day7_api.py -q --basetemp=data/tmp/pytest-day8-api
-$env:PYTHONPATH = (Get-Location).Path
-.\.venv\Scripts\python.exe scripts/validate_day8_actual.py
 ```
 
-The last command hash-checks prior artifacts and verifies real API contracts,
-HTTP proxying, production-bundle DOM navigation and saved-model inference.
-It starts and terminates only its own loopback child servers. Contract tests
-are optional/skipped on a fresh checkout without local artifacts; the measured
-Day 8 run executes all of them. Build output, node_modules, caches and generated
-verification reports are ignored. See [Day 8 results and limitations](docs/day8_report.md).
+The latest release run passes **144 Python tests** and **32 frontend tests**, strict TypeScript checks and a production build. Real-artifact integration reconciles 5,332 projected Gold fields, exercises all five compiled-page DOM flows and verifies saved-model inference and backend-unavailable behavior. DOM/CSS checks do not establish visual correctness. Four frontend saved-contract tests skip when their ignored local Day 8 contracts are absent in a fresh clone.
 
-## Day 9 integration and hardening
+[Day 10 report](docs/day10_report.md) records measured startup/runtime/storage, preservation and repository audits. [Day 9 hardening](docs/day9_report.md) documents confirmed defects and performance limits. New release checks write only ignored `results/day10/`; prior outputs stay unchanged.
 
-Invalid vehicle/date filters pause API requests rather than fetching unfiltered
-data. The connection badge has an explicit retry after backend recovery, and
-gateway/malformed error envelopes produce safe actionable messages. Obsolete
-requests remain abortable. The backend launcher limits native CPU pools before
-imports using process-only OMP/OpenBLAS/MKL/NumExpr settings; the existing saved
-model and its predictions remain unchanged.
+## Limitations and future improvements
 
-```powershell
-$env:PYTHONPATH = (Get-Location).Path
-.\.venv\Scripts\python.exe scripts/validate_day9_actual.py
-.\.venv\Scripts\python.exe scripts/verify_day9_launcher.py
-.\.venv\Scripts\python.exe scripts/finalize_day9_statistics.py
-```
+VED is one historical regional cohort with irregular sampling, structural missingness and uncalibrated ECU readings. Strict continuity/exact endpoints introduce offline selection bias. There are 50 independent test vehicles, not 1,919 independent drivers, and no test EVs.
 
-These commands reconcile real artifacts, benchmark bounded loopback requests,
-check CORS/errors/missing dependencies, verify compiled UI behavior and actual
-backend shutdown, and terminate only their own process trees. They write ignored
-Day 9 reports. Ports 8000/5173 must be free; unrelated processes are never stopped.
-See [Day 9 measurements](docs/day9_report.md). No browser was available in the
-automation session: DOM tests do not establish desktop/mobile visual verification.
-Vite development modules expose development-only source filenames; API responses
-and compiled production assets passed path/secret checks. Keep the development
-server loopback-only; use the existing production preview for compiled assets.
+This is a local portfolio application without authentication, TLS, public deployment or operational SLAs. Vite development modules expose source filenames; keep development servers loopback-only. The production bundle and API are checked for paths and recognized secrets. Manual desktop/mobile visual sign-off is still required.
+
+Future work could investigate external-region/vehicle validation, low/high-speed behavior, causal raw-telemetry preparation and deployment controls. None is implemented in this release.
+
+For interviews: [3–5 minute demo and engineering decisions](docs/demo_guide.md), [questions and answers](docs/interview_qa.md), and [approved ML problem definition](docs/ml_problem_definition.md).

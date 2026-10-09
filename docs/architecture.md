@@ -1,292 +1,85 @@
-# FleetPulse architecture — validated Bronze, Silver and Gold
+﻿# FleetPulse architecture
 
-```text
-Author VED commit + license
-           |
-      download manifest (sizes, SHA-256, member CRCs)
-           |
-  data/raw/ved/*.7z + static XLSX (retained, Git-ignored)
-           |
-  data/tmp/ved/partN/ (one archive at a time; free-space/budget gate)
-           |
-  PySpark local[2], explicit 22-string schema + raw record provenance
-           |
-  bounded weekly Arrow/Pandas transfer → PyArrow Zstandard Parquet
-           |
-  atomic, reconciled output in data/bronze/ved/source_month=YYYY-MM/
-           |
-  explicit-file Spark reader → inspection-only quality statistics
+Immutable measurements, descriptive analytics and causal forecasting are separate contracts. Everything runs locally on Windows; no cloud, queue, container or streaming infrastructure is needed.
+
+```mermaid
+flowchart TD
+    VED[Author VED archives + static workbooks] --> CHECK[Commit / size / hashes / CRC / storage checks]
+    CHECK --> INGEST[PySpark explicit-schema ingestion]
+    INGEST --> ARROW[Bounded weekly PyArrow Parquet IO]
+    ARROW --> B[Bronze: original tokens + provenance]
+    B --> CLEAN[PySpark typing / documented quality rules]
+    CLEAN --> S[Silver: measurements + quality flags]
+    CLEAN --> Q[Quarantine: rows + exclusion reasons]
+    B -. row reconciliation .-> Q
+    S --> SQL[DuckDB Gold SQL]
+    SQL --> G[Seven Gold Parquet tables]
+    G --> QUERY[Bounded DuckDB queries + cache]
+    QUERY --> API[FastAPI /api/v1]
+    API --> REACT[React + TypeScript dashboard]
+    S --> SPLIT[Vehicle split frozen before window generation]
+    SPLIT --> WINDOWS[Past 60s features / future 60s labels]
+    WINDOWS --> TRAIN[Training vehicles]
+    WINDOWS --> VAL[Validation vehicles]
+    WINDOWS --> TEST[Held-out test vehicles]
+    TRAIN --> FIT[Six fixed HGB configurations / native NaN]
+    FIT --> SELECT[Validation-only selection]
+    VAL --> SELECT
+    SELECT --> MODEL[Saved training-only model + inference metadata]
+    MODEL --> EVAL[Frozen test evaluation + vehicle bootstrap]
+    TEST --> EVAL
+    EVAL --> REPORT[Saved metrics / baselines / cohorts / figures]
+    REPORT --> API
+    PREPARED[Caller: exact 31 prepared past-only features] --> VALIDATE[Schema / units / missingness / gap validation]
+    VALIDATE --> PREDICT[POST /api/v1/ml/predict]
+    MODEL --> PREDICT
+    PREDICT --> REACT
 ```
 
-## Source contract and retention
+## Artifact contracts
 
-Both archives from pinned author commit `6baa4963782d515a67d32a5490bd5d11f5d9bf0d` pass CRC tests.
-All 54 headers are verified against source field names, including `OAT[DegC]`.
-Twenty-two source fields remain strings to preserve original spelling and
-literal `NaN`. Additional columns hold raw_line, source_file, source_week,
-is_malformed and malformed_reason. Raw records exclude line terminators;
-the archives preserve canonical CSV bytes. Malformed observations and
-duplicates remain in Bronze. Unexpected schemas and count mismatches fail
-explicitly. During Day 2, numeric casting and the static powertrain join were
-inspection views only. Day 3 adds typed Silver with the rules below; missing
-measurements are never imputed.
+| Boundary | Local artifact | Contract |
+|---|---|---|
+| Source → Bronze | `data/raw/ved/`, `data/bronze/ved/` | Pinned author commit, inspected schema, raw tokens, malformed flags and provenance |
+| Bronze → Silver | `data/silver/ved/`, `data/quarantine/ved/` | Every input retained or quarantined; stable row provenance; original SOC preserved |
+| Silver → Gold | `data/gold/ved/` | Seven descriptive tables; source/SQL/output hashes; explicit NULL semantics |
+| Silver → ML | `data/ml/speed/`, `results/day5/` | Exact endpoints, gaps ≤2s, strict disjoint contexts, frozen vehicle manifests and 31 features |
+| Model / evaluation | `models/day6/`, `results/day6/` | Trusted local artifact, hash/version/feature order checks, immutable evaluation |
+| Serving | Gold, Day 3/6 reports, saved model | No ETL at startup; bounded projections; safe unavailable/error responses |
+| Browser | Typed `/api/v1` DTOs | Pagination/filters, cancellation, loading/empty/error states, no fabricated fallback telemetry |
 
-## Local Windows execution
+Datasets/model binaries/reports remain ignored by Git; source, SQL, tests, lockfiles, contracts and lightweight evaluation figures are tracked. Paths resolve from the project root. A clone requires local artifact reconstruction before analytics/readiness/inference succeed. See [fresh Windows setup](demo_guide.md#fresh-windows-setup).
 
-Python 3.12.10, Java 21.0.12.1, Spark 4.0.3.
-The launcher sets Java/Python-worker settings and all current temporary
-locations inside the project. It leaves system-wide settings alone.
-The existing approved PyArrow package writes Parquet with Windows APIs.
-Spark reads enumerated file paths; Hadoop's native Windows writer and
-directory listing remain unavailable. The roundtrip and fixture tests pass
-through the provided implementation. No native Hadoop binaries are installed.
+Weekly PyArrow IO avoids Windows Hadoop native-writer dependencies. Bronze/Silver use source-month directories and weekly files; compact Gold is not partitioned by vehicle ID. Acquisition stages one archive at a time and checks free space and caps. Current storage is below the preferred 5 GB; the maximum is 10 GB.
 
-## Partitioning, budget and idempotence
+## Measurement semantics
 
-13 source-month partitions contain 54 weekly files. Source month comes
-from the week-start filename; it is not an observation-date transformation.
-No vehicle-ID partitions or per-trip files are generated. The largest weekly
-CSV is 96,677,690 bytes, which bounds each Arrow/Pandas collection.
-Source expansion is 3,203,555,729 bytes; only one archive is staged at once.
-Generated source CSVs are removed after their file count/schema checks pass;
-original archives are retained. Current output is 546,055,318
-bytes and observed processing peak is 3,018,505,445 bytes against a 5 GB cap.
-Full inspection monitors storage and cancels Spark jobs at 4.5 GB.
+Bronze 22,436,808 = Silver 22,434,106 + quarantine 2,702; 384 vehicles and 32,552 vehicle/trip pairs remain. Elapsed milliseconds are trip-relative, not Unix time. Gold daily/monthly cohorts assign whole trips to the author's reference trip-start dates without inventing a timezone or splitting midnight crossings.
 
-Fixed output names, source hashes and output hashes support resumable cache
-validation. Fresh files are ordered by raw_line and published via atomic
-replacement after validation. Output file-set and full-row reconciliation
-detect stale/missing files. There is no append path or silent row dropping.
-Tests use small fixtures; a full repeat invocation preserves all 54 hashes.
+Distance integrates eligible measured speed intervals, requiring finite nonnegative endpoints and positive gaps ≤2s. It is partial segment coverage, not full mileage. Whole-trip/lifetime Gold aggregates cannot be causal forecasting features.
 
-## Measured artifacts and scope
+Negative elapsed time is quarantined. Sensor-specific invalid values become null with flags; legitimately signed current/temperature stay signed. SOC `(100,100.001]` is precision-normalized to 100; other invalid SOC is null. Bronze and Silver source-SOC preserve original values. No sensor imputation occurs. [Day 3](day3_report.md) records every rule.
 
-### Day 3 Silver and quality
+## ML isolation
 
-The existing Bronze files feed `src/processing/silver_ved.py` without
-re-extraction or Day 2 replay. Spark standardizes numeric types and applies
-documented row/field quality rules; bounded PyArrow writes 54 Silver files
-and 54 quarantine files in the original source-month layout. Provenance is
-the immutable Bronze file and zero-based row index. Atomic replacement,
-config/source/output hashes, full row-identity reconciliation and explicit
-file-path Spark readers validate reproducibility on Windows.
+Features at t use `[t−60s,t]`; labels integrate speed over `[t,t+60s]`. Exact endpoints and gaps ≤2s are required. Future continuity determines offline label eligibility only, never features. Selected full contexts share no observations within a trip, including endpoints between examples.
 
-22,436,808 input rows reconcile to 22,434,106 Silver rows and 2,702 quarantine
-rows. Negative elapsed offsets are quarantined, not rebased. Tiny SOC
-overshoots are normalized with original parsed SOC retained. NaN becomes
-NULL; no sensor values are imputed. Irregular gaps and high load are flagged,
-and signed current/temperature/fuel trims remain signed. Exact rules and
-all measured counts are in [Day 3 report](day3_report.md).
+The 11,549 examples cover 318 vehicles. Train/validation/test have 7,509/2,121/1,919 rows and 223/45/50 represented vehicles with no shared IDs. Predictors exclude IDs, coordinates, absolute dates, future coverage and Gold summaries. Six optional sensor means retain native NaN alongside observed fractions.
 
-Fuel feasibility runs before Silver and measures existing observations,
-contiguous coverage and exact-endpoint 60+60-second windows. The original
-ICE/HEV target was not viable for held-out-vehicle evaluation;
-the user approved next-60-second mean speed forecasting on Day 4. Window computations
-produce diagnostic counts, not a Gold training dataset. No model is trained.
+HistGradientBoosting fits training only. Six fixed configurations use validation pooled MAE; no validation refit, test tuning or random-row early stopping occurs. Baselines share examples; historical mean fits training only. Validation permutation importance and paired vehicle bootstrap do not alter the chosen model/features. No EV appears in test; pooled gains do not imply a uniform vehicle advantage.
 
-22,436,808 source rows equal Bronze rows. Results JSON/XML artifacts
-record per-file hashes/counts/runtime, telemetry statistics, repeat checks
-and test results. [Day 2 report](day2_report.md) contains measured summaries.
-Source and generated data remain Git-ignored. Day 2 ended at validated Bronze;
-Day 3 adds the Silver/quarantine layers above. Day 4 adds descriptive Gold; ML training, dashboards and cloud
-services remain deferred. The current cap is 10 GB, with a preference for under 5 GB.
+## API and frontend
 
-## Day 4 Gold analytics and DuckDB
+Routes/services/schemas are modular. DuckDB uses bounded read-only queries and a 32-entry cache; report parsing has size limits and a four-signature cache. Lists cap at 100 rows/100,000 offset; request bodies at 64 KiB. SQL filters are parameterized. Error responses expose no paths or tracebacks.
 
-```text
-Immutable Silver Parquet (54 files / 22,434,106 rows)
-    -> in-process DuckDB 1.4.4 explicit-file view
-    -> bounded weekly ordering after checking that no trip crosses source files
-    -> temporary within-trip interval facts
-    -> checked-in SQL: trip / vehicle / trip-start day / month / powertrain
-    -> fleet overview and quality-flag summaries
-    -> PyArrow Zstandard Gold Parquet (7 small tables)
-    -> direct Silver aggregate checks + independent interval integration
-    -> SHA-256 source/output/config manifest and named SQL demo CLI
-```
+Inference validates exact prepared schema, history, units and coherent missingness/sampling, preserves feature order and checks model hash/library compatibility. It neither prepares features from raw GPS nor proves caller provenance. Aggregate confidence intervals are not prediction intervals.
 
-Gold uses one thread, a 4 GB process memory limit and a 1.5 GB project-local
-spill cap. SQL output has explicit stable ordering. Each file is staged,
-readability/count checked, all summaries reconciled, then atomically replaced;
-the manifest is written last. Consumers should run the builder successfully
-before querying; simultaneous readers during multi-file publication are not
-supported. No persistent copy of Silver or database server is introduced.
+The backend binds loopback, one worker, concurrency limit 32. Its launcher sets native CPU limits before scientific-library import, only within its process. CORS permits two documented localhost development origins without credentials. There is no authentication or public deployment; CORS is not an authentication boundary.
 
-Each trip is keyed by (vehicle_id,trip_id). Distance is trapezoidal integration
-of adjacent nonmissing nonnegative speed with 0<gap<=2000 ms. Invalid intervals
-contribute no distance, while their observations still contribute to counts.
-No eligible interval produces NULL distance; measured stationary intervals
-produce zero. Sample speed means/percentiles are separate from time-weighted
-interval means. No manufacturer-independent odometer/GPS mileage claim is made.
+React uses the Vite same-origin proxy, bounded requests, obsolete-request cancellation and explicit retries. Invalid filters pause queries. Development JSX reveals source filenames; production assets and API responses are scanned separately.
 
-Daily/monthly outputs group **whole trips by trip-start reference date**:
-2017-11-01 + floor(day_number-1). DayNum is constant per observed vehicle/trip;
-the timezone is unspecified. These cohort summaries do not assert event-day
-traffic rates, do not split midnight-crossing trips, and differ from source
-week/month provenance. Gold retains cohort keys, count/coverage semantics and
-source-file counts; full row-level provenance remains in immutable Silver.
+## Verification boundaries
 
-The approved forecasting label is next-60-second time-weighted mean speed;
-features may use only records available at the anchor. Split by vehicle before
-window creation. Gold whole-trip/lifetime summaries are not causal features.
-No ML training/windows or dashboard is created on Day 4. See the updated
-[ML definition](ml_problem_definition.md) for fuel rejection evidence and
-[Day 4 report](day4_report.md) for measured reconciliation/runtime/storage.
+Fixture suites test parsing, quality, leakage, vehicle isolation, model inference and API/frontend behavior. Real-artifact checks reconcile projected Gold fields, saved metrics and actual inference. SHA-256 snapshots protect raw/Bronze/Silver/quarantine/Gold/ML/model and prior result files. Release tests do not execute production ETL or retraining.
 
-## Day 5 leakage-safe ML dataset and baselines
-
-```text
-Gold vehicle IDs (source roster only) -> frozen hash-ranked vehicle split
-Immutable Silver weekly Parquet -> complete vehicle/trip chronological groups
-    -> exact observed t-60, t, t+60 boundaries and <=2s gaps
-    -> Day 3 count reconciliation (34,348 candidates / 318 vehicles)
-    -> strict greedy disjoint 120s contexts (11,549 examples)
-    -> past-only feature function + separate future-speed target integration
-    -> PyArrow train / validation / test tables in data/ml/speed/
-    -> fixed last-speed / past-mean / train-only historical-mean baselines
-    -> source-provenance audit, immutable hashes and reproducibility manifest
-```
-
-Assign all 384 source vehicles before inspecting their windows/labels, using
-SHA-256 of a fixed seed plus ID, then 70/15/remainder percent by ranked vehicle
-count. Usable vehicles are 223/45/50; all windows of each vehicle stay together.
-Within a trip, the next retained feature start is strictly later than the
-previous target end. This removes shared endpoints as well as target/context
-interval overlap; it does not establish statistical independence between a
-vehicle's different trips. Macro metrics expose unequal per-vehicle volumes.
-
-31 numeric predictors come exclusively from [t-60s,t]. The target uses the
-observed anchor speed at t and future measured speeds through t+60s. The
-anchor boundary is shared only within an example as explicitly approved;
-future rows/coverage cannot become features. No full-trip/lifetime Gold
-statistic, ID or absolute timestamp is a predictor. Sensor NULL semantics and
-Bronze row pointers are preserved. New ML files/JSON/Parquet results remain
-Git-ignored; no raw traces, trained estimator or model binary is published.
-
-NumPy/Pandas perform bounded local window calculations; PyArrow performs
-Windows-compatible writes. No new framework/package installation is needed.
-Whole trips must fit in one source file; cross-file trips fail explicitly.
-The final dataset manifest is written after validated staged files replace
-fixed outputs; consumers must not query during multi-file publication.
-The historical baseline fits just one mean from training labels. No estimator
-training, dashboard or Day 6 work is performed. See [Day 5 report](day5_report.md).
-
-## Day 6 training and conditional uncertainty
-
-```text
-Frozen Day 5 Parquet + manifests -> checksum/schema/vehicle/temporal audit
-    -> exactly 31 past-only numeric columns (native NaN preserved)
-    -> six CPU HistGradientBoosting fits on train only, fixed seed/one thread
-    -> pooled validation MAE selection, no internal early-stopping split
-    -> persist frozen selection before test metrics, no train+validation refit
-    -> validation-only permutation importance (no feature deletion/retraining)
-    -> identical-example baseline/test evaluation
-    -> vehicle errors + paired whole-vehicle bootstrap + cohort diagnostics
-    -> local ignored model/metadata/results and three lightweight public figures
-```
-
-All prior data and Day 5 outputs are hash-checked before/after. The selected
-model is serialized under `models/day6/`; metadata fixes feature order, versions,
-training-input hash, forecast units, missing-value policy and selected parameters.
-Inference accepts exactly the allowlisted predictors, checks model integrity and
-preserves NaN. Joblib is a trusted-local artifact format, not an untrusted upload
-format. Native missing-value branches learn only from training data; IDs, target,
-future telemetry and absolute time never enter the predictor matrix.
-
-Bootstrap uses 2,000 seeded paired draws of whole vehicles, preserving each
-vehicle's window count for pooled metrics and equal vehicle weighting for macro
-metrics. It is conditional on the fixed fitted model/split, not retraining
-uncertainty or population representativeness. Target speed bins are diagnostic
-labels only. No EV appears in test, no new test-driven hyperparameter is tried,
-and negative subgroup/vehicle results are reported. No dashboard/Day 7 is begun.
-See [Day 6 report](day6_report.md) for actual outcomes and lightweight figures.
-
-## Approved Day 7 architecture: FastAPI now, React + TypeScript later
-
-The earlier Streamlit plan is superseded. Day 7 implements only the local API;
-the future React + TypeScript client will consume typed versioned contracts.
-
-```text
-Future React + TypeScript development client (localhost:5173)
-      -> loopback Uvicorn / FastAPI /api/v1
-      -> routes / public schemas / services
-         -> bounded parameterized DuckDB -> existing Gold Parquet
-         -> allowlisted saved Day 6 evaluation -> metrics / vehicle errors
-         -> strict 31-feature prepared input -> cached trusted saved model
-      -> bounded typed JSON and sanitized errors, no raw telemetry processing
-```
-
-Source layout is `src/api/{routes,services,schemas}` with an app factory/settings.
-No frontend, cloud, auth system or additional pipeline technology is introduced.
-API startup performs no ETL, telemetry scan or training. Model cache uses the
-existing inference loader, artifact checksum, library version and feature order.
-Only six optional sensor means can be null; NaN handling remains native.
-Prepared-vector declarations/coherence cannot establish caller provenance.
-
-Analytics reads only the small Gold/evaluation tables, owns one DuckDB connection
-per query and caches at most 32 pages by artifact signature. Response projections
-are explicit and cannot include private paths. Pagination maxes at 100; request
-bodies at 64 KiB. Unknown fields/queries and invalid unit/null policies fail.
-Readiness covers schemas, model loading and model/evaluation identity. Individual
-routes can remain available during partial dependency loss; liveness stays up.
-The launcher binds 127.0.0.1, one worker, with local React CORS and process-only
-settings. Earlier data, model and evaluation artifacts remain immutable.
-See [API contracts](api_contract.md) and [Day 7 measured report](day7_report.md).
-
-## Day 8 React + TypeScript client
-
-```text
-Browser -> loopback Vite development/preview server
-           -> React Router: overview / driving / quality / ml / prediction
-           -> typed abortable API client, loading/empty/safe error states
-           -> relative /api proxy -> existing FastAPI /api/v1
-                -> bounded Gold DuckDB queries (≤100 response rows)
-                -> saved Day 3 pipeline / Day 6 cohort JSON projections
-                -> unchanged Day 6 model, exact prepared 31-feature input
-```
-
-`dashboard/src/api.ts` owns response interfaces, request errors and cancellation.
-`components.tsx` owns presentation, pagination and bounded trend charts;
-`pages/Analytics.tsx` and `pages/Prediction.tsx` implement the five pages.
-`App.tsx` owns responsive navigation. CSS uses Tailwind's Vite integration,
-local system typography, navy surfaces and accessible contrast/focus styles.
-Recharts and framework code are split into separate production chunks.
-
-No raw observations or GPS locations are sent to the browser. Lists use
-25-record pages; trend charts use at most 100 cohorts at a time. Missing metrics
-render as a dash. Distance is identified as supported-interval integration,
-and trends are whole-trip reference-date cohorts, not hourly/live activity.
-ML limitations and vehicle-cluster uncertainty remain visible; actual target
-speed bins are diagnostic labels only. Prediction inputs start blank, require
-all 31 explicit values/null declarations, and never include vehicle IDs.
-
-Two read-only adapters expose pipeline reconciliation and ML cohort errors.
-They bound report sizes (4 MB / 250 KB), cache four file signatures and project
-only public numeric/categorical fields. They never scan telemetry or fit a
-model. Earlier dataset/model/evaluation artifacts are hash-protected.
-
-The Windows launcher sets only process environment values. The Vite proxy
-supports both development and local production preview without new CORS
-origins. Vitest uses one worker thread, jsdom and Testing Library; responsive
-checks are structural CSS checks, not pixel rendering. Real HTTP and built
-bundle DOM tests use existing local artifacts. See [Day 8 report](day8_report.md).
-
-## Day 9 reliability and CPU resource limits
-
-The API hook accepts a null path to pause invalid filter queries, aborts obsolete
-requests and handles null/non-JSON error envelopes. A manual connection retry
-avoids polling and permits recovery after a backend restart. Contracts and
-dataset/model outputs remain unchanged.
-
-The Windows backend launcher initializes native CPU pools to one thread before
-loading scientific libraries. This reduces measured private allocation while
-preserving the existing one-thread inference contract. Settings are process-only.
-Day 9 validation reconciles projected source fields, benchmarks warmed HTTP calls,
-measures the full own-process tree (including Windows venv redirectors), counts
-compiled UI requests and tests unavailable-backend behavior. Temporary children
-and their descendants are stopped explicitly. No ETL or production training runs.
-
-API/production-asset path and secret checks pass. Vite's development transform
-contains source filename metadata; it remains local-only. Visual browser testing
-is explicitly unverified because no connected browser was available. See the
-[Day 9 report](day9_report.md) for measurements, test totals and limitations.
+DOM flows and CSS structure checks cannot verify chart pixels or real desktop/mobile layout. Browser tools remain unavailable; [manual visual sign-off](demo_guide.md#manual-browser-sign-off) is pending. [Day 10](day10_report.md) records actual measurements and limitations.
