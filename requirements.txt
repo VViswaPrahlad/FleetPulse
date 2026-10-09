@@ -17,3 +17,9 @@ scipy==1.17.1
 joblib==1.5.3
 threadpoolctl==3.6.0
 matplotlib==3.10.8
+# Day 7 REST API, local server, explicit validation/runtime pins and test client.
+fastapi==0.115.12
+starlette==0.46.2
+pydantic==2.11.7
+uvicorn==0.34.3
+httpx==0.28.1

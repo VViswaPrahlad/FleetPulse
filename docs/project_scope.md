@@ -21,7 +21,7 @@ VED's signal is ECU/OBD reported, coverage may vary by vehicle, and the corpus i
 - DuckDB SQL analytics and explicit data-quality reporting.
 - Scikit-learn persistence baseline and one tree-boosting regression model.
 - Vehicle-grouped validation, MAE/RMSE, and leakage controls.
-- Streamlit/Plotly descriptive analytics and model evaluation after approved implementation.
+- Approved local FastAPI backend and a future React + TypeScript frontend; the original Streamlit plan is superseded.
 - Pytest tests for pipeline contracts and target/split correctness.
 - 16 GB RAM-aware processing; maximum 10 GB storage, preferably below 5 GB.
 
@@ -59,7 +59,7 @@ VED's signal is ECU/OBD reported, coverage may vary by vehicle, and the corpus i
 
 ## Current checkpoint
 
-Dataset approval was followed by validated Days 2–5: Bronze, Silver/feasibility, Gold/DuckDB, and causal feature windows/baselines. On 2026-10-09 the user authorized Day 6 HistGradientBoosting training, validation-only selection, fixed test evaluation, diagnostics, and an audited commit/push. Stop after Day 6; dashboard and Day 7 work remain unstarted. Historical daily reports retain the decisions applicable at their checkpoints.
+Validated Days 1–6 are complete. The user approved replacing the earlier Streamlit plan with React + TypeScript / FastAPI, and authorized Day 7 backend-only development plus an audited commit/push. Reuse existing Gold/model/evaluation artifacts without ETL or retraining. Stop after Day 7; React and Day 8 work remain unstarted. Historical reports retain the decisions applicable at their checkpoints.
 
 ## Sources
 

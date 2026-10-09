@@ -3,6 +3,13 @@
 FleetPulse is a local vehicle telemetry project. The approved primary source
 is the [Vehicle Energy Dataset (VED)](https://github.com/gsoh/VED).
 
+**Day 7 backend:** FastAPI exposes 15 versioned analytics, readiness and model
+routes. Prediction requires the exact 31-field prepared past-only feature vector;
+raw telemetry and incomplete vectors are rejected. The saved model and all
+earlier data/evaluations are reused without modification. The approved frontend
+architecture is React + TypeScript, planned for a later day; no frontend is
+implemented now. See [REST contracts](docs/api_contract.md) and [Day 7 report](docs/day7_report.md).
+
 **Day 6 is complete:** a validation-selected HistGradientBoostingRegressor
 achieves test MAE **10.887 km/h** and RMSE **14.091 km/h**, versus last-speed
 baseline **14.056 / 18.803** on the identical held-out examples. Pooled MAE
@@ -90,7 +97,8 @@ The initial fuel-use forecasting proposal is documented in
 coverage is now measured; no missing fuel signal is imputed on Day 2.
 Silver and feasibility analysis are complete. Day 4 adds Gold and DuckDB.
 Day 5 adds feature engineering and baselines; Day 6 adds local CPU model
-training/evaluation. Dashboards and cloud services remain deferred. Stop after Day 6.
+training/evaluation. Day 7 adds a local FastAPI backend. React implementation
+and cloud services remain deferred. Stop after Day 7.
 
 ## Repeat Day 3 using validated caches
 
@@ -182,4 +190,29 @@ inference metadata. `src.ml.inference.load_model()` checks integrity and version
 `predict_features()` accepts exactly the 31 approved columns, never IDs or target.
 Only load trusted locally generated Joblib artifacts. Models, datasets and
 `results/day6/` remain ignored. Three lightweight PNG figures are checked in
-under `docs/figures/day6/`. No dashboard or Day 7 work is started.
+under `docs/figures/day6/`. This records the Day 6 model that Day 7 serves unchanged.
+
+## Day 7 local REST backend
+
+```powershell
+.\scripts\run_backend.ps1
+# In another project terminal:
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/ready
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/vehicles?limit=5
+$taskBody = Get-Content -LiteralPath docs/examples/day7_prediction_request.json -Raw
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/ml/predict -ContentType application/json -Body $taskBody
+```
+
+OpenAPI is at `http://127.0.0.1:8000/openapi.json`; interactive API documentation
+is at `/docs`. Use `-Reload` for code reload restricted to `src/api/`. Routes
+cover Gold fleet/vehicle/trip/trend/powertrain/quality analytics and Day 6 model
+metrics, per-vehicle errors, feature schema and one-vector prediction.
+List responses have bounded pagination/filtering; missing dependencies return
+safe 503 responses. No telemetry is processed or model trained on startup.
+Analytics cache is bounded; native model missing-value handling and exact
+feature order are preserved. CORS allows only local React development port 5173.
+
+The demo is loopback-only and unauthenticated. Provide existing local Gold,
+model and evaluation artifacts; they are intentionally absent from GitHub.
+A fresh checkout without artifacts can serve health/docs but reports not ready.
+No Streamlit, React, dashboard or Day 8 implementation is added on Day 7.

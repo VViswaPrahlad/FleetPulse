@@ -200,3 +200,35 @@ uncertainty or population representativeness. Target speed bins are diagnostic
 labels only. No EV appears in test, no new test-driven hyperparameter is tried,
 and negative subgroup/vehicle results are reported. No dashboard/Day 7 is begun.
 See [Day 6 report](day6_report.md) for actual outcomes and lightweight figures.
+
+## Approved Day 7 architecture: FastAPI now, React + TypeScript later
+
+The earlier Streamlit plan is superseded. Day 7 implements only the local API;
+the future React + TypeScript client will consume typed versioned contracts.
+
+```text
+Future React + TypeScript development client (localhost:5173)
+      -> loopback Uvicorn / FastAPI /api/v1
+      -> routes / public schemas / services
+         -> bounded parameterized DuckDB -> existing Gold Parquet
+         -> allowlisted saved Day 6 evaluation -> metrics / vehicle errors
+         -> strict 31-feature prepared input -> cached trusted saved model
+      -> bounded typed JSON and sanitized errors, no raw telemetry processing
+```
+
+Source layout is `src/api/{routes,services,schemas}` with an app factory/settings.
+No frontend, cloud, auth system or additional pipeline technology is introduced.
+API startup performs no ETL, telemetry scan or training. Model cache uses the
+existing inference loader, artifact checksum, library version and feature order.
+Only six optional sensor means can be null; NaN handling remains native.
+Prepared-vector declarations/coherence cannot establish caller provenance.
+
+Analytics reads only the small Gold/evaluation tables, owns one DuckDB connection
+per query and caches at most 32 pages by artifact signature. Response projections
+are explicit and cannot include private paths. Pagination maxes at 100; request
+bodies at 64 KiB. Unknown fields/queries and invalid unit/null policies fail.
+Readiness covers schemas, model loading and model/evaluation identity. Individual
+routes can remain available during partial dependency loss; liveness stays up.
+The launcher binds 127.0.0.1, one worker, with local React CORS and process-only
+settings. Earlier data, model and evaluation artifacts remain immutable.
+See [API contracts](api_contract.md) and [Day 7 measured report](day7_report.md).

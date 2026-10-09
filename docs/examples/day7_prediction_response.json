@@ -1,0 +1,9 @@
+{
+  "predicted_mean_speed_kmh": 36.61748855856695,
+  "forecast_seconds": 60,
+  "history_seconds": 60,
+  "units": "km/h",
+  "model_id": "hgb-day6-ea8d587632fa",
+  "input_kind": "prepared_past_features",
+  "warning": "Prepared past-only features are required; the API cannot certify their source telemetry."
+}
