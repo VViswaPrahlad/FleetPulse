@@ -1,173 +1,105 @@
-﻿# FleetPulse
+# FleetPulse
 
-[**Live Demo**](https://fleetpulse-dashboard.onrender.com) · [GitHub Source](https://github.com/VViswaPrahlad/FleetPulse) · [Live API Docs](https://fleetpulse-api-got2.onrender.com/docs)
+**Automotive Telemetry Analytics & Machine Learning Platform**
 
-**Vehicle telemetry → auditable analytics → leakage-safe forecasting → FastAPI and React.**
+Transforming real vehicle telemetry into auditable fleet analytics and next-minute speed forecasts with **PySpark, DuckDB, scikit-learn, FastAPI, and React**.
 
-FleetPulse is a full-stack Data Engineering + ML portfolio project using genuine vehicle telemetry. A **PySpark Bronze–Silver–Gold pipeline** preserves source observations, standardizes measurements and produces auditable analytics. **DuckDB** queries those aggregates; **FastAPI** exposes fleet metrics and a trained next-minute speed forecasting model; a **React + TypeScript dashboard** makes the results interactive.
+[**🚀 Live Dashboard**](https://fleetpulse-dashboard.onrender.com) · [**API Docs**](https://fleetpulse-api-got2.onrender.com/docs) · [**Demo Walkthrough**](docs/demo_guide.md)
 
-The ML task predicts mean vehicle speed over the next 60 seconds from the preceding 60 seconds of telemetry. The project demonstrates a reproducible chain from source records to held-out vehicle evaluation, without claiming fleet-wide production readiness.
+> **Live demo:** Visit **Prediction Lab → Run example prediction** to call the deployed model using a verified prepared feature vector. Expected output: approximately **36.62 km/h**. Render's free API may need about a minute to wake after inactivity.
 
-## Project highlights
+## At a glance
 
-| Verified result | Value |
-|---|---:|
-| Ingested telemetry observations | **22,436,808** |
-| Retained Silver observations | **22,434,106** |
-| Vehicles | **384** |
-| Trips | **32,552** |
-| Test MAE | **10.887 km/h** |
-| Test RMSE | **14.091 km/h** |
-| Test MAE improvement over last-observed speed | **≈22.6%** |
+| Data engineering | Machine learning |
+|---|---|
+| **22,436,808** ingested telemetry records | **10.887 km/h** held-out test MAE |
+| **22,434,106** retained Silver records | **14.091 km/h** held-out test RMSE |
+| **384** vehicles · **32,552** trips | **22.55% lower test MAE** than last-observed-speed baseline |
 
-Explore fleet statistics, driving analytics, data quality and model evaluation in the live dashboard. In **Prediction Lab**, click **Run example prediction** to submit the verified prepared vector to the real API; the saved model returns approximately **36.62 km/h**. The full 31-feature form remains available under Advanced.
+The source is the [Vehicle Energy Dataset (VED)](https://github.com/gsoh/VED), an historical real-world telemetry dataset. The figures above reflect inspected project artifacts; the source README's reported vehicle count differs from the **384 distinct vehicle IDs** found in the ingested files.
 
-## Architecture and stack
+## How it works
 
-```mermaid
+~~~mermaid
 flowchart LR
-    VED[Official VED archives] --> SP[PySpark ingestion + PyArrow IO]
-    SP --> B[Bronze Parquet]
-    B --> S[Silver + quality flags]
+    VED[VED telemetry] --> Spark[PySpark ETL]
+    Spark --> B[Bronze]
+    B --> S[Silver + quality checks]
     S --> G[Gold Parquet]
-    G --> D[DuckDB SQL]
-    D --> API[FastAPI /api/v1]
-    API --> UI[React + TypeScript]
-    S --> F[Past-only 60-second features]
-    F --> SPLIT[Vehicle-held-out splits]
-    SPLIT --> M[Saved HistGradientBoosting model]
-    M --> INFER[Prepared-vector inference]
-    INFER --> API
-```
+    G --> DB[DuckDB analytics]
+    DB --> API[FastAPI]
+    API --> UI[React dashboard]
+    S --> Feat[Past-only features]
+    Feat --> Eval[Vehicle-held-out ML evaluation]
+    Eval --> Model[Saved forecasting model]
+    Model --> API
+~~~
 
-[Architecture and measurement boundaries](docs/architecture.md) explain quarantine, training/evaluation isolation and artifact dependencies.
+- **Data pipeline:** Bronze retains source provenance, Silver standardizes observations and quarantines invalid records, and Gold produces queryable fleet, vehicle, trip, and quality summaries.
+- **Analytics:** DuckDB and SQL power fleet overviews, driving patterns, and data-quality views without sending raw telemetry to the browser.
+- **Forecasting:** A scikit-learn HistGradientBoosting model uses **31 past-only features from the preceding 60 seconds** to predict mean speed over the **next 60 seconds**.
+- **Application:** FastAPI exposes versioned endpoints; the React/TypeScript dashboard provides fleet insights, ML evaluation, and predictions.
 
-| Component | Technology |
+[Detailed architecture](docs/architecture.md) · [Data-quality rules](docs/day3_report.md) · [SQL examples](sql/README.md)
+
+## ML evaluation
+
+Vehicles are separated between training, validation, and test sets to prevent vehicle overlap. The final **1,919 test examples represent 50 held-out vehicles**.
+
+| Model | Test MAE (km/h) | Test RMSE (km/h) |
+|---|---:|---:|
+| Last-observed-speed baseline | 14.056 | 18.803 |
+| **HistGradientBoosting** | **10.887** | **14.091** |
+
+**Scope matters:** These are pooled offline results, not a claim of production-ready forecasting. Performance worsens for **16 of 50** test vehicles, low/high-speed cohorts can fare worse, and EVs are absent from the test set. See the [full evaluation and uncertainty analysis](docs/day6_report.md) for vehicle-level results and confidence intervals.
+
+## Tech stack
+
+| Layer | Technologies |
 |---|---|
-| Ingestion / cleaning | Python 3.12, PySpark 4.0.3, JDK 21, PyArrow 20.0.0 |
-| Analytics | DuckDB 1.4.4, Parquet, reusable SQL |
-| Features / ML | Pandas, NumPy, scikit-learn 1.7.2 HistGradientBoostingRegressor |
-| Backend | FastAPI 0.115.12, Pydantic, Uvicorn |
-| Frontend | React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4, Recharts, Lucide |
-| Validation | Pytest, Vitest, Testing Library, real-artifact API/DOM checks |
+| Data engineering | Python, PySpark, PyArrow, Apache Parquet |
+| Analytics | DuckDB, SQL, Pandas |
+| Machine learning | scikit-learn, NumPy |
+| Backend | FastAPI, Pydantic, Uvicorn |
+| Frontend | React, TypeScript, Vite, Tailwind CSS, Recharts |
+| Quality & hosting | Pytest, Vitest, Render |
 
-Exact dependencies are pinned in [requirements.txt](requirements.txt) and [package-lock.json](dashboard/package-lock.json). CPU execution is sufficient; the GPU is unused. The project can run entirely locally; the public demo is hosted on Render.
+## Run locally
 
-## Dataset and engineering
+The validated environment uses **Python 3.12**, **Node.js 24**, and **JDK 21** for Spark reconstruction. On Windows PowerShell:
 
-Source: [Vehicle Energy Dataset (VED), author-maintained repository](https://github.com/gsoh/VED), by Geunseob Oh, David LeBlanc and Huei Peng. The author describes Ann Arbor telemetry collected in 2017–2018 and supplies an [Apache-2.0 dataset license](https://github.com/gsoh/VED/blob/master/LICENSE). Acquisition pins commit `6baa4963782d515a67d32a5490bd5d11f5d9bf0d`; hashes, archive CRCs and storage checks are recorded locally.
-
-The source README reports 383 vehicles; the actual 54 CSVs contain **384 distinct IDs**. FleetPulse reports inspected file statistics rather than copying the README population count. Trip-relative millisecond timestamps, irregular sampling and structural sensor missingness are explicit constraints. GPS exists in the source but is not used to invent live vehicle locations or forecasting features.
-
-| Layer | Measured result and purpose |
-|---|---|
-| Bronze | 22,436,808 rows; original tokens, provenance and malformed-record indicators |
-| Silver | 22,434,106 retained + 2,702 quarantined rows; typed measurements and quality flags |
-| Gold | Fleet overview (1), vehicles (384), trips (32,552), daily cohorts (375), monthly cohorts (13), powertrains (4), quality metrics (5) |
-
-Silver quarantines negative elapsed timestamps and preserves missingness without sensor imputation. SOC precision overshoot `(100,100.001]` becomes 100 with a flag and original value retained; other out-of-range SOC becomes unavailable. Legitimately signed current/temperature remain signed. See [Day 3 rules and feasibility](docs/day3_report.md).
-
-Gold distance is a **partial observed-segment estimate** from speed integration over eligible gaps ≤2 seconds, not odometer or complete trip mileage. Daily/monthly summaries group whole trips by dataset-reference trip-start date; the source timezone is unspecified. [SQL examples](sql/README.md) expose these assumptions.
-
-Fuel forecasting was rejected before training: **96.0061%** of Bronze fuel-rate readings are missing. The original ICE/HEV population supports only **one vehicle, one trip and one paired forecasting window** under the gap policy. Vehicle-held-out evaluation would be impossible. The approved target is speed; missing fuel and proxy consumption are never fabricated.
-
-## ML methodology and results
-
-At observed prediction time **t**, use `[t−60s,t]` to predict the time-weighted mean measured speed in `[t,t+60s]`, in km/h. Exact observed endpoints and gaps ≤2 seconds are required. The shared boundary at t is known at prediction time; all later telemetry belongs exclusively to the label.
-
-- Silver reproduces 34,348 eligible candidates across 318 vehicles. Strict selection produces **11,549 examples** without reusing observations between complete 120-second contexts within a trip.
-- **31 past-only features** describe speed, acceleration, stops, sampling and available sensor means/coverage. IDs, GPS, absolute dates, future coverage and whole-trip Gold statistics are excluded.
-- Frozen deterministic vehicle splits contain **7,509 examples / 223 represented vehicles** in training, **2,121 / 45** in validation and **1,919 / 50** in test. No vehicle crosses splits.
-- Six fixed configurations are compared on validation only. The final model remains training-only with native NaN handling, no imputation/scaling and no random-row early stopping. Test results do not select features or hyperparameters.
-
-| Method | Validation MAE | Validation RMSE | Test MAE | Test RMSE |
-|---|---:|---:|---:|---:|
-| Last-observed speed | 13.702 | 18.220 | 14.056 | 18.803 |
-| Past-mean persistence | 14.632 | 19.893 | 14.187 | 19.245 |
-| Training historical mean | 17.391 | 24.349 | 17.815 | 23.724 |
-| HistGradientBoosting | **10.438** | **13.678** | **10.887** | **14.091** |
-
-Errors are **km/h**, evaluated on identical examples. Test pooled MAE improves **22.55%** and RMSE **25.06%** relative to last-observed speed. With 2,000 fixed-seed vehicle-cluster bootstrap replicates, test MAE's 95% interval is **10.188–11.905 km/h** and RMSE's is **13.194–15.304 km/h**.
-
-Improvement is not universal: **16 of 50 test vehicles worsen**, low/high-speed cohorts worsen, and paired vehicle-macro MAE improvement's interval crosses zero. **EVs are absent from the test set.** These are conditional aggregate intervals, not individual-prediction intervals. [Day 6 evaluation](docs/day6_report.md) includes macro errors, cohort analysis and validation-only importance.
-
-![Held-out predicted versus actual speed](docs/figures/day6/predicted_vs_actual.png)
-
-## Run locally on Windows
-
-Use Python 3.12 and Node.js 24 for the validated environment. JDK 21 is needed for Spark/reconstruction and the complete fixture suite, **not** API/dashboard startup. [Fresh-machine instructions](docs/demo_guide.md#fresh-windows-setup) include official installer links and process-only Java configuration.
-
-```powershell
+~~~powershell
 git clone https://github.com/VViswaPrahlad/FleetPulse.git
-Set-Location FleetPulse
+cd FleetPulse
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-$env:npm_config_cache = Join-Path (Get-Location) 'data/tmp/npm-cache'
 npm.cmd ci --prefix dashboard
-```
+~~~
 
-With existing local artifacts, use **two PowerShell terminals** at the project root:
+With the required local data and model artifacts already prepared, start the backend and frontend in **separate terminals**:
 
-```powershell
-# Terminal 1
+~~~powershell
 .\scripts\run_backend.ps1
-```
+~~~
 
-```powershell
-# Terminal 2
+~~~powershell
 .\scripts\run_frontend.ps1
-```
+~~~
 
-Open `http://127.0.0.1:5173`; API documentation is `http://127.0.0.1:8000/docs`. The backend binds loopback, uses one worker and sets native CPU limits only in its terminal process. Do not bypass execution-policy/security restrictions if scripts are blocked.
+Open **http://127.0.0.1:5173**. **Important:** the public Git repository intentionally excludes raw data, generated Parquet outputs, and model binaries; cloning alone does **not** reproduce the live analytics or prediction results. Follow the [fresh-machine setup and artifact reconstruction guide](docs/demo_guide.md) for a complete local run.
 
-**Git contains source, tests, SQL, documentation, lockfiles and lightweight figures.** It excludes VED archives, CSV/Parquet outputs, result manifests, environments and trained model binaries. A source-only checkout can build the frontend, serve API docs/health and test fixtures; real analytics/readiness/predictions require locally generated artifacts. Missing artifacts produce honest unavailable states, never demo metrics. See [ordered artifact reconstruction](docs/demo_guide.md#artifact-reconstruction-source-only-checkout).
+## Documentation
 
-## API and prediction contract
+| Want to explore… | Read |
+|---|---|
+| Architecture, data boundaries, and artifact flow | [Architecture](docs/architecture.md) |
+| Dataset validation and cleaning decisions | [Data quality report](docs/day3_report.md) |
+| Forecasting methodology, held-out evaluation, and limitations | [ML evaluation](docs/day6_report.md) |
+| API request schemas and prediction contract | [API contract](docs/api_contract.md) |
+| Local setup, live demo walkthrough, and interview talking points | [Demo guide](docs/demo_guide.md) · [Interview Q&A](docs/interview_qa.md) |
+| Testing and deployment checks | [Deployment review](docs/deployment_review.md) |
+| Render deployment and verified runtime-bundle setup | [Deployment guide](docs/deployment_guide.md) |
 
-Versioned routes expose fleet/vehicle/trip analytics, bounded date cohorts, powertrains, quality, model/baseline metrics and vehicle errors. Tables default to 25 rows and cap requests at 100; the browser never receives millions of observations. [Endpoint contracts](docs/api_contract.md) document filters, units, errors and CORS.
+**Deployment note:** The [live dashboard](https://fleetpulse-dashboard.onrender.com) uses Render's free hosting tier. The API can sleep while idle; retry once it wakes. This is a portfolio demonstration, not a continuously available production fleet service.
 
-`POST /api/v1/ml/predict` requires the **exact 31 prepared past-only features** with schema/unit metadata. Raw GPS or incomplete raw telemetry is insufficient. Optional sensor means may be null only with coherent coverage; unexpected fields and invalid sampling histories are rejected. Model hash, feature order and library versions are checked without retraining.
-
-```powershell
-$request = Get-Content docs/examples/day7_prediction_request.json -Raw
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/api/v1/ml/predict `
-    -ContentType 'application/json' -Body $request
-```
-
-The saved Day 6 model predicts **36.61748855856695 km/h** for this anonymous measured vector. The API validates consistency but cannot independently prove the historical provenance of a caller's prepared features.
-
-## Tests and verification
-
-```powershell
-# Substitute your actual JDK folder; settings apply only to this process.
-.\scripts\run_day2.ps1 -JavaHome 'C:\path\to\jdk-21' -Script '-m' pytest `
-    -q --basetemp=data/tmp/pytest-release
-npm.cmd --prefix dashboard test
-npm.cmd --prefix dashboard run typecheck
-npm.cmd --prefix dashboard run build
-```
-
-The Day 10 release validation passed **144 Python tests** and **32 frontend tests**, strict TypeScript checks and a production build. The subsequent [deployment-preparation review](docs/deployment_review.md) passed **90 relevant Python tests** and **41 frontend tests**, including the Quick Demo and public-API configuration. These are recorded verification runs; no new evaluations are claimed here.
-
-Real-artifact integration reconciles 5,332 projected Gold fields, exercises all five compiled-page DOM flows and verifies saved-model inference and backend-unavailable behavior. DOM/CSS checks do not establish complete cross-browser visual correctness; the [manual browser checklist](docs/demo_guide.md#manual-browser-sign-off) documents that scope. Four frontend saved-contract tests skip when their ignored local Day 8 contracts are absent in a fresh clone.
-
-[Day 10 report](docs/day10_report.md) records measured startup/runtime/storage, preservation and repository audits. [Day 9 hardening](docs/day9_report.md) documents confirmed defects and performance limits. New release checks write only ignored `results/day10/`; prior outputs stay unchanged.
-
-## Limitations and future improvements
-
-VED is one historical regional cohort with irregular sampling, structural missingness and uncalibrated ECU readings. Strict continuity/exact endpoints introduce offline selection bias. There are 50 independent test vehicles, not 1,919 independent drivers, and no test EVs.
-
-This is a portfolio demonstration, deployed over HTTPS on Render, without authentication or operational SLAs. Free-tier availability and cold starts apply. Vite development modules expose source filenames; keep local development servers loopback-only. The production bundle and API are checked for paths and recognized secrets; automated DOM checks are not a substitute for full desktop/mobile browser inspection.
-
-Future work could investigate external-region/vehicle validation, low/high-speed behavior, causal raw-telemetry preparation and deployment controls. None is implemented in this release.
-
-For interviews: [3–5 minute demo and engineering decisions](docs/demo_guide.md), [questions and answers](docs/interview_qa.md), and [approved ML problem definition](docs/ml_problem_definition.md).
-
-## Live deployment
-
-- **Dashboard:** [fleetpulse-dashboard.onrender.com](https://fleetpulse-dashboard.onrender.com) — React on Render Static Site.
-- **Backend:** `https://fleetpulse-api-got2.onrender.com` — FastAPI on Render Free Web Service, with a [health endpoint](https://fleetpulse-api-got2.onrender.com/api/v1/health) and [interactive API documentation](https://fleetpulse-api-got2.onrender.com/docs).
-
-Render's free backend can sleep when idle and may take time to wake up. If the dashboard initially reports that the API is unavailable or waking, wait about a minute and retry. There are no fabricated fallback metrics or predictions.
-
-The live service uses a compact bundle of genuine Gold analytics, saved evaluation summaries and the existing trained model; raw VED, Bronze/Silver telemetry and training tables are excluded. [Deployment and rebuild reference](docs/deployment_guide.md) preserves the runtime lock, artifact integrity checks and reproducible settings. The local workflow above remains available.
+**Data attribution:** [VED source and Apache-2.0 dataset license](https://github.com/gsoh/VED). FleetPulse keeps source artifacts and trained binaries out of Git; see the linked documentation for reproducibility and measurement caveats.
