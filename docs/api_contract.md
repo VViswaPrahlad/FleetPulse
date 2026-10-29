@@ -4,7 +4,9 @@ Local base URL: `http://127.0.0.1:8000/api/v1`. API version: v1;
 application version: 1.0.0. OpenAPI is at `/openapi.json`, interactive API docs
 at `/docs` and `/redoc` (outside the versioned resource prefix).
 The approved product architecture is **React + TypeScript / FastAPI**.
-Day 7 implements the backend only; no React application exists yet.
+The React dashboard is implemented. Day 7 sections below describe the original local backend contract; Day 8 additions appear at the end.
+
+Hosted API: `https://fleetpulse-api-got2.onrender.com/api/v1`; [interactive docs](https://fleetpulse-api-got2.onrender.com/docs). See the [public recruiter walkthrough](demo_guide.md#public-recruiter-route--no-installation-required) for the live example and availability status.
 
 ## Run on Windows
 
@@ -155,10 +157,9 @@ Missing resources do not prevent `/health` or OpenAPI availability; independent
 routes remain usable if their own dependencies exist. Metrics remain historical
 evaluation even if the model is missing; readiness flags that condition.
 
-Allowed future React origins: `http://localhost:5173` and
+Default local React origins: `http://localhost:5173` and
 `http://127.0.0.1:5173`. GET/POST, Content-Type, no credential cookies or
-wildcard origins. CORS is a browser policy, not authentication. This is an
-unauthenticated **local portfolio demo**, not a publicly hardened deployment.
+wildcard origins. CORS is a browser policy, not authentication. The hosted portfolio demo uses one exact HTTPS frontend origin through the deployment configuration. It remains unauthenticated; CORS is not authentication or abuse protection. See [deployment configuration](deployment_guide.md).
 
 ## Caching and data access
 

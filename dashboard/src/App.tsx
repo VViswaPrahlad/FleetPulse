@@ -13,7 +13,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { IS_PUBLIC_API, useApi } from "./api";
+import { API_DOCS_URL, IS_PUBLIC_API, useApi } from "./api";
 import {
   Overview,
   Driving,
@@ -100,6 +100,9 @@ function Layout() {
               <ArrowUpRight size={13} />
             </a>
           </div>
+          <a href={API_DOCS_URL} target="_blank" rel="noreferrer">
+            API Docs <ArrowUpRight size={13} />
+          </a>
           <div className="workspace-status">
             <span className="status-dot" />
             {IS_PUBLIC_API

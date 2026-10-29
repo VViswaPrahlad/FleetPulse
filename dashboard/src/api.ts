@@ -16,6 +16,7 @@ export function apiBase(value?: string): string {
   return url.origin + "/api/v1";
 }
 const API_BASE = apiBase(import.meta.env.VITE_API_URL);
+export const API_DOCS_URL = API_BASE.replace(/\/api\/v1$/, "/docs");
 export const IS_PUBLIC_API = API_BASE.startsWith("https://");
 const PUBLIC_UNAVAILABLE =
   "The API may be unavailable or waking from sleep. Wait about a minute and retry.";

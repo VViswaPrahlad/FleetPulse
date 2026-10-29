@@ -8,6 +8,14 @@ Transforming real vehicle telemetry into auditable fleet analytics and next-minu
 
 > **Live demo:** Visit **Prediction Lab → Run example prediction** to call the deployed model using a verified prepared feature vector. Expected output: approximately **36.62 km/h**. Render's free API may need about a minute to wake after inactivity.
 
+## Recruiter demo — no installation required
+
+1. Open **Live Dashboard** above.
+2. Select **Prediction lab** in the sidebar, then **Run example prediction** in Quick Demo. No feature entry is needed. Expect **36.62 km/h**, the predicted mean speed for the next 60 seconds.
+3. Open **API Docs** above to inspect the typed contract (optional).
+
+If the API is asleep, wait about a minute. If an error appears, use the affected page's **Retry request**, then run the example again. Header **Retry** checks connectivity only; it does not reload page data. If loading persists, reload the dashboard root and navigate via the sidebar. A saved [request](docs/examples/day7_prediction_request.json) and [response](docs/examples/day7_prediction_response.json) are historical evidence, not a substitute for a successful live call. See the [walkthrough and current verification status](docs/demo_guide.md).
+
 ## At a glance
 
 | Data engineering | Machine learning |

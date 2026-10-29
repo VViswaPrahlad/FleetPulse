@@ -1,10 +1,20 @@
 # Render portfolio deployment and rebuild reference
 
-**Live dashboard:** [fleetpulse-dashboard.onrender.com](https://fleetpulse-dashboard.onrender.com). **Live API:** `https://fleetpulse-api-got2.onrender.com`, with [health](https://fleetpulse-api-got2.onrender.com/api/v1/health) and [API docs](https://fleetpulse-api-got2.onrender.com/docs). The owner has completed deployment and verified the example forecast at approximately 36.62 km/h.
+**Live dashboard:** [fleetpulse-dashboard.onrender.com](https://fleetpulse-dashboard.onrender.com). **Live API:** `https://fleetpulse-api-got2.onrender.com`, with [health](https://fleetpulse-api-got2.onrender.com/api/v1/health) and [API docs](https://fleetpulse-api-got2.onrender.com/docs). The owner previously reported a successful example forecast at approximately 36.62 km/h. This is historical evidence; current live acceptance remains incomplete (see the dated review below).
 
 The material below preserves the **2026-10-09 preparation/review checkpoint** as a rebuild reference. Its local measurements are not Render benchmarks; historical approval boundaries and browser limitations describe that checkpoint. Existing local startup scripts, model and data outputs remain intact. See the [source review](deployment_review.md) for the original publication scope and checks.
 
 Target: **Render Static Site** for React plus **Render Free Web Service** for FastAPI. No database, persistent disk, Docker, Java, Spark, retraining or ETL is required for serving. The supplied `render.yaml` is a settings template; applying/creating services would deploy and requires a separate decision.
+
+## Routing recovery and current live acceptance
+
+The 2026-10-29 browser review reached the dashboard root and Prediction Lab via the sidebar, but reloading `/prediction` returned `Not Found`. The API initially showed loading/wake-up states, then recovered: Swagger rendered and the live example returned **36.62 km/h**, model `hgb-day6-ea8d587632fa`; Reset cleared the result.
+
+On the **existing** Render Static Site, verify **Redirects/Rewrites** has source `/*`, destination `/index.html`, action **Rewrite**. The same rule already exists in `render.yaml`; repository configuration alone does not prove it is applied to a manually created service. Do not recreate the services or modify billing. Then open and reload `/`, `/driving`, `/quality`, `/ml`, and `/prediction` directly, and test Back/Forward.
+
+On the existing API service, inspect startup/deployment logs and check `/api/v1/health` **and** `/api/v1/ready`. Confirm the configured frontend origin and frontend `VITE_API_URL` match the public URLs above. If an environment change is necessary, rebuild/redeploy the affected existing service and repeat the live example. Do not change the model, artifact bundle, plan or training recipe to conceal an availability failure.
+
+Record automated checks and browser observations separately. The current prediction and Swagger checks pass; deployed deep-route reloads and the full [visual checklist](demo_guide.md#manual-browser-sign-off) remain outstanding acceptance requirements. The historical local checks below do not satisfy them.
 
 ## Actual runtime audit
 
@@ -133,7 +143,7 @@ The Blueprint uses `sync: false` values you must provide; creating it still trig
 - Correct-origin CORS passes; localhost/unapproved origin fail. Invalid raw GPS returns safe 422. Stopping only the owned backend produces honest public-mode unavailable/wake/retry states on all five DOM pages.
 - **278 original data/model/Day 1–10 result files** remain byte-identical. No ETL/training/registry package installation/upload was performed.
 
-Computer-use inventory still reports no enabled browsers. Therefore real chart rendering, desktop/mobile pixels, touch/keyboard interactions and **all live Render verification remain pending**. Follow [manual browser sign-off](demo_guide.md#manual-browser-sign-off), substituting the actual HTTPS frontend URL.
+At the original preparation checkpoint, computer-use inventory reported no enabled browsers. The limited 2026-10-29 hosted observations above supersede that inventory statement; full chart, responsive, keyboard and live-success verification remain pending. Follow [manual browser sign-off](demo_guide.md#manual-browser-sign-off), substituting the actual HTTPS frontend URL.
 
 ## Live acceptance checklist
 

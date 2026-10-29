@@ -1,8 +1,26 @@
-﻿# FleetPulse demo guide
+# FleetPulse demo guide
+
+## Public recruiter route — no installation required
+
+1. From the [README](../README.md), open [Live Dashboard](https://fleetpulse-dashboard.onrender.com).
+2. Select **Prediction lab** in the sidebar → **Quick Demo → Run example prediction**.
+3. Expect **36.62 km/h** (unrounded reference: 36.61748855856695), a next-60-second mean-speed forecast. Advanced feature editing and Reset are optional exploration.
+4. Open [API Docs](https://fleetpulse-api-got2.onrender.com/docs) from the README or dashboard to inspect the contract. This is an optional branch after the prediction.
+
+Render's free API may sleep. Wait about a minute; on a page error use **Retry request**, then run the example again. Header **Retry** checks `/health` only and does not retry page data. If loading persists, reopen the dashboard root and use the sidebar. API Docs can show Render's wake-up page before Swagger loads. Do not mistake `/health` success for artifact readiness; the presenter should also check [readiness](https://fleetpulse-api-got2.onrender.com/api/v1/ready).
+
+If the service remains unavailable, inspect the saved [request](examples/day7_prediction_request.json) and [response](examples/day7_prediction_response.json). Label these as historical saved-model evidence; do not claim a live prediction succeeded.
+
+### Verification status — 2026-10-29 review
+
+- **Automated (current checkout):** frontend suite **37 passed, 4 skipped** (the saved-contract snapshots are absent); strict TypeScript and both local-default and public-API production builds passed. These are code/build checks, not visual sign-off. No ETL, training or real-data Python harness was rerun. Earlier results in the [deployment guide](deployment_guide.md) remain historical evidence.
+- **Browser observed:** the initial cold API showed loading/Render wake-up states. On a later check, Swagger loaded and the hosted example returned **36.62 km/h**, model `hgb-day6-ea8d587632fa`; Reset removed the result. Readiness returned `ready: true` with all four component flags true. The root showed 384 vehicles, 32,552 trips and 22,434,106 observations. Data Quality rendered reconciled counts and the missingness chart; Driving Analytics rendered its trip table and an absent-vehicle empty state. Reloading `/prediction` displayed `Not Found`.
+- **Still pending:** deployed deep-route reloads, all-page desktop/mobile/keyboard/chart/error-state sign-off. These observations do not establish a general outage or its cause.
+- **Deployment action:** the repository already declares `/*` → `/index.html` as a **rewrite** in `render.yaml`. Confirm this rule on the existing deployed Static Site; do not create duplicate services. See the deployment guide's routing recovery steps.
 
 ## Interview demonstration: about four minutes
 
-Start both servers and confirm `/api/v1/ready` returns 200 before presenting. Complete the visual checklist below. Do not run ETL or training during the interview.
+For a local presenter session, start both servers and confirm `/api/v1/ready` returns 200 before presenting. Complete the visual checklist below. Do not run ETL or training during the interview.
 
 | Time | Demonstration | Explanation |
 |---|---|---|
@@ -86,7 +104,7 @@ The initial reconstruction can take substantial time and staging space. No timin
 
 Core serving artifacts:
 
-- `data/gold/ved/`: seven Parquet tables listed in README.
+- `data/gold/ved/`: `trip_analytics.parquet`, `vehicle_analytics.parquet`, `daily_fleet.parquet`, `monthly_fleet.parquet`, `powertrain_fleet.parquet`, `fleet_overview.parquet`, `quality_metrics.parquet` (defined in `src/analytics/build_gold.py`).
 - `results/day3/silver_quality.json`: pipeline and quality summaries.
 - `results/day6/training_run.json`, `cohort_metrics.json`, `vehicle_errors.parquet`: saved evaluation.
 - `models/day6/hist_gradient_boosting.joblib`, `inference_metadata.json`: trusted model and exact schema/version/hash metadata.
@@ -113,7 +131,7 @@ Production preview: build first, then `.\scripts\run_frontend.ps1 -Preview -Port
 
 ## Manual browser sign-off
 
-**Pending: automated tools did not observe rendered UI.** Inventory reports no browsers; in-app and Chrome attempts both fail. Before claiming final visual release readiness, record browser/version, date, viewport and pass/fail notes. Leave these boxes unchecked until observed.
+**Pending: full visual sign-off is incomplete.** The original Day 10 environment could not observe a browser. The limited hosted observations on 2026-10-29 are recorded above and do not complete this checklist. Before claiming final visual release readiness, record browser/version, date, viewport and pass/fail notes. Leave these boxes unchecked until observed.
 
 1. Start servers and confirm readiness. Open `http://127.0.0.1:5173` in Chrome/Edge. Open DevTools Console/Network; use **1440×900**, 100% zoom.
 2. Visit five routes via sidebar and direct URL; test Back/Forward and route reload. Check active navigation, readable headings and no blank/clipped UI or console errors.
