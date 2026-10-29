@@ -8,13 +8,13 @@ Target: **Render Static Site** for React plus **Render Free Web Service** for Fa
 
 ## Routing recovery and current live acceptance
 
-The 2026-10-29 browser review reached the dashboard root and Prediction Lab via the sidebar, but reloading `/prediction` returned `Not Found`. The API initially showed loading/wake-up states, then recovered: Swagger rendered and the live example returned **36.62 km/h**, model `hgb-day6-ea8d587632fa`; Reset cleared the result.
+The initial 2026-10-29 browser review reached the dashboard root and Prediction Lab via the sidebar, but reloading `/prediction` returned `Not Found`. After sign-in, the existing Static Site was confirmed to have no rewrite rules. The `/*` → `/index.html` **Rewrite** was saved; direct entry and reload then passed on all five routes, and the example again returned **36.62 km/h** after refreshing Prediction Lab. PR #1 was merged and deployed as commit `6d2a4af`. The API initially showed loading/wake-up states, then recovered: Swagger rendered and the live example returned **36.62 km/h**, model `hgb-day6-ea8d587632fa`; Reset cleared the result.
 
 On the **existing** Render Static Site, verify **Redirects/Rewrites** has source `/*`, destination `/index.html`, action **Rewrite**. The same rule already exists in `render.yaml`; repository configuration alone does not prove it is applied to a manually created service. Do not recreate the services or modify billing. Then open and reload `/`, `/driving`, `/quality`, `/ml`, and `/prediction` directly, and test Back/Forward.
 
 On the existing API service, inspect startup/deployment logs and check `/api/v1/health` **and** `/api/v1/ready`. Confirm the configured frontend origin and frontend `VITE_API_URL` match the public URLs above. If an environment change is necessary, rebuild/redeploy the affected existing service and repeat the live example. Do not change the model, artifact bundle, plan or training recipe to conceal an availability failure.
 
-Record automated checks and browser observations separately. The current prediction and Swagger checks pass; deployed deep-route reloads and the full [visual checklist](demo_guide.md#manual-browser-sign-off) remain outstanding acceptance requirements. The historical local checks below do not satisfy them.
+Record automated checks and browser observations separately. The current prediction, Swagger and deployed deep-route reload checks pass; the full [visual checklist](demo_guide.md#manual-browser-sign-off) remain outstanding acceptance requirements. The historical local checks below do not satisfy them.
 
 ## Actual runtime audit
 
