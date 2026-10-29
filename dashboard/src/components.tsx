@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { query, useApi, type Page, type Trend } from "./api";
+import { IS_PUBLIC_API, query, useApi, type Page, type Trend } from "./api";
 import { useState } from "react";
 
 export const number = (value: number | null | undefined, digits = 0) =>
@@ -126,7 +126,9 @@ export function State({
         <span className="skeleton" />
         <span className="skeleton" />
         <span className="skeleton" />
-        <p>Reading local analytics…</p>
+        <p>{IS_PUBLIC_API
+          ? "Connecting to the hosted API. It may need about a minute to wake. If an error appears, use Retry request; if loading persists, reload the dashboard and try again."
+          : "Reading local analytics…"}</p>
       </div>
     );
   if (error)

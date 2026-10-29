@@ -7,6 +7,8 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535)
   throw new Error("Invalid local API port");
 const proxy = {
   "/api": { target: `http://127.0.0.1:${port}`, changeOrigin: true },
+  "/docs": { target: `http://127.0.0.1:${port}`, changeOrigin: true },
+  "/openapi.json": { target: `http://127.0.0.1:${port}`, changeOrigin: true },
 };
 export default defineConfig({
   plugins: [react(), tailwindcss()],
