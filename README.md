@@ -111,3 +111,7 @@ Open **http://127.0.0.1:5173**. **Important:** the public Git repository intenti
 **Deployment note:** The [live dashboard](https://fleetpulse-dashboard.onrender.com) uses Render's free hosting tier. The API can sleep while idle; retry once it wakes. This is a portfolio demonstration, not a continuously available production fleet service.
 
 **Data attribution:** [VED source and Apache-2.0 dataset license](https://github.com/gsoh/VED). FleetPulse keeps source artifacts and trained binaries out of Git; see the linked documentation for reproducibility and measurement caveats.
+
+## License
+
+FleetPulse's original project code is released under the [MIT License](LICENSE). The third-party [Vehicle Energy Dataset (VED)](https://github.com/gsoh/VED) is separately licensed under Apache-2.0; third-party dependencies and other external assets retain their respective licenses.
