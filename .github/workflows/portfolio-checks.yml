@@ -22,7 +22,7 @@ jobs:
       - name: Check dependency consistency
         run: python -m pip check
       - name: Run artifact-free API and deployment tests
-        run: python -m pytest tests/test_day7_api.py tests/test_day8_reports.py tests/test_deployment.py -q
+        run: python -m pytest tests/test_day7_api.py tests/test_day8_reports.py tests/test_deployment.py -q --basetemp=data/tmp/pytest-ci
 
   dashboard:
     runs-on: ubuntu-latest
