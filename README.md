@@ -108,7 +108,7 @@ Open **http://127.0.0.1:5173**. **Important:** the public Git repository intenti
 
 ## Documentation
 
-Start with the [current documentation guide](docs/README.md) or the [four-minute interview reference](docs/interview_quick_reference.md). Dated Day 3/6/10 reports and the original deployment review are **historical checkpoints**, not the current deployment status.
+Start with the [current documentation guide](docs/README.md). Dated Day 3/6/10 reports and the original deployment review are **historical checkpoints**, not the current deployment status.
 
 | Want to explore… | Read |
 |---|---|
