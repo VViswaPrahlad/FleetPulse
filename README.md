@@ -8,6 +8,16 @@ Transforming real vehicle telemetry into auditable fleet analytics and next-minu
 
 > **Live demo:** Visit **Prediction Lab → Run example prediction** to call the deployed model using a verified prepared feature vector. Expected output: approximately **36.62 km/h**. Render's free API may need about a minute to wake after inactivity.
 
+## Why this project
+
+Fleet telemetry is large, inconsistent and easy to misinterpret. FleetPulse turns the historical Vehicle Energy Dataset (VED) into auditable Bronze/Silver/Gold analytics and evaluates next-minute speed forecasts without mixing vehicles across train, validation and test.
+
+**Try it:** [Live dashboard](https://fleetpulse-dashboard.onrender.com) · [Prediction Lab](https://fleetpulse-dashboard.onrender.com/prediction) · [FastAPI docs](https://fleetpulse-api-got2.onrender.com/docs) · [Architecture](docs/architecture.md)
+
+**Evidence in brief:** 22,436,808 records ingested; 22,434,106 retained in Silver; 384 distinct IDs and 32,552 trips. On 1,919 windows from 50 held-out vehicles, HistGradientBoosting achieves **10.887 km/h MAE** versus **14.056 km/h** for the last-speed baseline (**22.55% lower pooled MAE**). It performs worse on 16/50 test vehicles; EVs are not represented in the test set. These are historical measured offline results, not live forecasting performance.
+
+**Architecture:** VED → PySpark / PyArrow → Bronze → Silver + quarantine → Gold Parquet → DuckDB → FastAPI → React. A separate past-only feature branch trains and evaluates the saved model. The hosted portfolio demo serves prebuilt artifacts; it does not ingest telemetry or retrain.
+
 ## Recruiter demo — no installation required
 
 1. Open **Live Dashboard** above.
@@ -98,6 +108,8 @@ Open **http://127.0.0.1:5173**. **Important:** the public Git repository intenti
 
 ## Documentation
 
+Start with the [current documentation guide](docs/README.md). Dated Day 3/6/10 reports and the original deployment review are **historical checkpoints**, not the current deployment status.
+
 | Want to explore… | Read |
 |---|---|
 | Architecture, data boundaries, and artifact flow | [Architecture](docs/architecture.md) |
@@ -105,7 +117,7 @@ Open **http://127.0.0.1:5173**. **Important:** the public Git repository intenti
 | Forecasting methodology, held-out evaluation, and limitations | [ML evaluation](docs/day6_report.md) |
 | API request schemas and prediction contract | [API contract](docs/api_contract.md) |
 | Local setup, live demo walkthrough, and interview talking points | [Demo guide](docs/demo_guide.md) · [Interview Q&A](docs/interview_qa.md) |
-| Testing and deployment checks | [Deployment review](docs/deployment_review.md) |
+| Historic pre-deployment checks | [Deployment review (historical)](docs/deployment_review.md) |
 | Render deployment and verified runtime-bundle setup | [Deployment guide](docs/deployment_guide.md) |
 
 **Deployment note:** The [live dashboard](https://fleetpulse-dashboard.onrender.com) uses Render's free hosting tier. The API can sleep while idle; retry once it wakes. This is a portfolio demonstration, not a continuously available production fleet service.

@@ -46,13 +46,16 @@ No. It requires the exact prepared historical feature schema with units/history 
 No. Existing compact Gold and bounded reports/model artifacts are reused. Queries cap at 100 rows, offsets at 100,000 and bodies at 64 KiB; bounded caches prevent repeated work. ETL/model fitting do not run at startup.
 
 **Is it production ready?**
-Modular services/schemas, safe errors, bounded IO, testing and reproducibility demonstrate engineering discipline. It remains a loopback portfolio demo without authentication/TLS/public deployment/monitoring/SLAs. CORS is not authentication. Dev modules contain source paths; production assets/API are scanned separately.
+Modular services/schemas, safe errors, bounded IO, testing and reproducibility demonstrate engineering discipline. It is a publicly deployed **portfolio demonstration**, not a production fleet service. A React Static Site and a serving-only FastAPI service run on Render over HTTPS, with historical analytics and prepared-feature inference from a validated compact bundle. There is no end-user authentication, uptime SLA, or production monitoring guarantee; the free API may sleep. CORS is not authentication. Local development assets and production assets/API have distinct review boundaries.
 
 **What happens when artifacts are missing?**
 Health remains live; readiness/resource endpoints return safe 503 and the frontend displays honest errors. Empty fixture roots test this without moving real artifacts. No fallback metrics or predictions are invented.
+
+**Is FleetPulse publicly deployed?**
+Yes. [The dashboard](https://fleetpulse-dashboard.onrender.com) and [API docs](https://fleetpulse-api-got2.onrender.com/docs) are hosted on Render. The public demo uses packaged validated artifacts, not live ingestion or training. Render's free API may be asleep and interactive verification can change over time. The historical [deployment guide](deployment_guide.md) documents route-rewrite recovery and remaining visual checks.
 
 **Can a recruiter reproduce it from Git alone?**
 Source, tests, SQL, contracts, lockfile/pins and lightweight measured figures are public. Archives/datasets/model/results are excluded. A fresh user installs dependencies and deliberately reconstructs artifacts from official pinned VED sources. A separate fresh-machine reconstruction was not performed during Day 10.
 
 **What remains unverified, and what would come next?**
-Automated Python/frontend/API/compiled-DOM checks pass, but actual desktop/mobile rendering is unverified because no browser surface is available. Follow the manual sign-off. Future proposals include external-region validation, low/high-speed improvement, causal raw-telemetry preparation, physical-device/accessibility checks and deployment controls; they are not implemented features.
+Automated Python/frontend/API checks were recorded at dated checkpoints. Subsequent live browser verification covered all five direct-entry/reload routes and the prepared example prediction (about 36.62 km/h), after a static-site rewrite fix. Full responsive desktop/mobile, accessibility, chart and error-state testing remains pending; see the [current demo guide](demo_guide.md). Future work includes external-cohort validation, low/high-speed improvement, raw-telemetry feature preparation, physical-device/accessibility checks and production operating controls; these are not implemented features.
