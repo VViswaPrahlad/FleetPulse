@@ -1,6 +1,6 @@
 ﻿# FleetPulse architecture
 
-Immutable measurements, descriptive analytics and causal forecasting are separate contracts. Everything runs locally on Windows; no cloud, queue, container or streaming infrastructure is needed.
+Immutable measurements, descriptive analytics and past-only forecasting are separate contracts. The data preparation and training pipeline runs locally on Windows; the public portfolio demo serves prebuilt, validated artifacts using a Render Static Site (React) and Render Free Web Service (FastAPI). Serving does not require Spark, ETL, retraining, or a hosted database. See [current deployment guidance](deployment_guide.md).
 
 ```mermaid
 flowchart TD
@@ -74,7 +74,7 @@ Routes/services/schemas are modular. DuckDB uses bounded read-only queries and a
 
 Inference validates exact prepared schema, history, units and coherent missingness/sampling, preserves feature order and checks model hash/library compatibility. It neither prepares features from raw GPS nor proves caller provenance. Aggregate confidence intervals are not prediction intervals.
 
-The backend binds loopback, one worker, concurrency limit 32. Its launcher sets native CPU limits before scientific-library import, only within its process. CORS permits two documented localhost development origins without credentials. There is no authentication or public deployment; CORS is not an authentication boundary.
+In local development, the backend binds loopback and permits the two documented localhost frontend origins without credentials. For the deployed demo, Render serves the React Static Site over HTTPS and starts a serving-only FastAPI process with a single configured frontend origin; packaged, checked artifacts are loaded without rerunning ETL or model training. The public demo is read-only and has no end-user authentication or production SLA. CORS is not an authentication boundary. See [deployment guidance](deployment_guide.md) for details and caveats.
 
 React uses the Vite same-origin proxy, bounded requests, obsolete-request cancellation and explicit retries. Invalid filters pause queries. Development JSX reveals source filenames; production assets and API responses are scanned separately.
 
@@ -82,4 +82,4 @@ React uses the Vite same-origin proxy, bounded requests, obsolete-request cancel
 
 Fixture suites test parsing, quality, leakage, vehicle isolation, model inference and API/frontend behavior. Real-artifact checks reconcile projected Gold fields, saved metrics and actual inference. SHA-256 snapshots protect raw/Bronze/Silver/quarantine/Gold/ML/model and prior result files. Release tests do not execute production ETL or retraining.
 
-DOM flows and CSS structure checks cannot verify chart pixels or real desktop/mobile layout. Browser tools remain unavailable; [manual visual sign-off](demo_guide.md#manual-browser-sign-off) is pending. [Day 10](day10_report.md) records actual measurements and limitations.
+DOM flows and CSS structure checks cannot verify chart pixels or full responsive/accessibility behavior. Subsequent live browser checks verified route entry/reload and the example prediction, but complete desktop/mobile/keyboard/chart/error-state sign-off remains pending. See [current demo status](demo_guide.md) and the [historical Day 10 report](day10_report.md).
